@@ -20,7 +20,11 @@ class Secuirity:
         return tmp
 
     def verify(self, data: str, hashed: hex) -> bool:
+        # print(data, " ", hashed)
         return self.encrypt(data) == hashed
+
+    def validateUsername(self, input_username: str, db_username: str):
+        return input_username == db_username
 
 
 if __name__ == "__main__":
