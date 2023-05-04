@@ -11,20 +11,22 @@
 #     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
 
 import os
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, APIRouter, Response
 from sqlalchemy.orm import Session
 from pydantic import SecretStr
+from typing import Optional
 
 from Backend.TESTS import Test_Admins as ta
 from Backend.DATABASE.Administrators_Table import Administrators_Table
 from Backend.SCHEMAS import Administrators_Schemas
 from Backend.CONFIG.connection import engine, Base, SessionLocal
+from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT, HTTP_401_UNAUTHORIZED, HTTP_200_OK
 
 # chapter_members.Base.metadata.create_all(bind=connection.engine)
 Base.metadata.create_all(bind = engine)
 
 app = FastAPI()
-
+# user= APIRouter()
 #dependency
 def get_db():
     db = SessionLocal()
@@ -33,7 +35,7 @@ def get_db():
     finally:
         db.close()
 
-@app.post("/Content/AdminCreate/", response_model=Administrators_Schemas.Administrator_CreateAccount_OUT)
+@app.post("/Content/AdminCreate/", status_code=HTTP_200_OK)
 def createAdmin(admin: Administrators_Schemas.Administrator_CreateAccount_IN, db: Session = Depends(get_db)):
     dbAdmin = ta.getAdminbyEmail(db, email=admin.email)
     if dbAdmin:
@@ -41,7 +43,8 @@ def createAdmin(admin: Administrators_Schemas.Administrator_CreateAccount_IN, db
     dbAdmin = ta.getAdminbyUserName(db, username=admin.userName.get_secret_value())
     if dbAdmin:
         raise HTTPException(status_code=400, detail="User Name already registered")
-    return ta.createAdmin(db=db, admin=admin)
+    ta.createAdmin(db=db, admin=admin)
+    return {'response':HTTP_200_OK, 'message':"User created"}
 
 @app.post("/Content/AdminLogin/")
 def loginAdmin(admin: Administrators_Schemas.Administrator_LoginAccount_IN, db: Session = Depends(get_db)) -> bool:
@@ -50,7 +53,45 @@ def loginAdmin(admin: Administrators_Schemas.Administrator_LoginAccount_IN, db: 
         raise HTTPException(status_code=401, detail="Wrong User Name or Password")
     return dbAdmin
 
-@app.get("/Content/Admins/")
-def getAdmins(db: Session = Depends(get_db)) -> list[Administrators_Schemas.Administrator_LookAccount_OUT]:
+# Changed this functino response model
+@app.get("/Content/Admins/", response_model=list[Administrators_Schemas.Administrator_LookAccount_OUT])
+def getAdmins(db: Session = Depends(get_db)):
     dbAdmins = ta.getAdmins(db)
+    print(dbAdmins)
     return dbAdmins
+
+# @app.post("/validation/", response_model=Administrators_Schemas.get_adta)
+@app.post("/validation/", status_code=200 )
+def validateuser(user: Administrators_Schemas.Administrator_LoginAccount_IN, db: Session = Depends(get_db)):
+    # a = ta.validateUser(db, username=admin.userName.get_secret_value(), password=admin.password.get_secret_value())
+    a = ta.validateUser(db, user=user)
+    print(a)
+    if a['msg'] == "User validated":
+        return {"status":HTTP_200_OK, 'message':a}
+    # print(a)
+    # return Response(status_code=HTTP_200_OK)
+    # return {"status":HTTP_200_OK, 'message':a}
+    # return {'userName':a[0], 'password':a[1], 'status': HTTP_200_OK}
+
+@app.get("/ascepupr/user/login/", status_code=HTTP_200_OK, response_model=Administrators_Schemas.Validate_user)
+def validation(username: str, password: SecretStr, token: str, db: Session = Depends(get_db)):
+    print(token)
+    a = ta.validateUsers(db,username, password, token)
+    print(a)
+    if a['status_code'] == 200:
+        return {"status_code":HTTP_200_OK, 'body':a['Token']}
+    else:
+        return {"status_code":HTTP_401_UNAUTHORIZED, 'body':a['msg']}
+
+
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+
+    
+
+
