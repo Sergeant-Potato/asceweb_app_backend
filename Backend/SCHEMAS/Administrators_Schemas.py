@@ -1,5 +1,6 @@
 from pydantic import BaseModel as Schema, ValidationError, validator, root_validator, EmailStr, SecretStr
 import datetime as dt
+from typing import Any
 
 
 '''
@@ -14,7 +15,7 @@ import datetime as dt
 '''
 
 class __Administrator_Basic_IN(Schema):
-    userName: SecretStr
+    userName: str
     passwd: SecretStr
 
     @validator('*', allow_reuse=True, pre=True)
@@ -30,17 +31,19 @@ class __Administrator_Basic_IN(Schema):
         '''
         val1 = values.get("userName")
         val2 = values.get("passwd")
+        print(values)
         if val1 == val2:
+            # print(values)
             raise ValueError("The User Name and passwdord cannot be the same.")
         return values
     
     @validator('userName', allow_reuse=True)
-    def isUserName(cls, value: SecretStr):
+    def isUserName(cls, value: str):
         if len(value) < 5:
             raise ValueError("The User Name must have more than four (4) characters.")
-        if value.get_secret_value().isalnum() == False:
+        if value.isalnum() == False:
             raise ValueError("An User Name must contain alphabetic and numeric characters.")
-        if value.get_secret_value().islower() or value.get_secret_value().isupper():
+        if value.islower() or value.isupper():
             raise ValueError("A User Name must have both upper - case and lower - case characters.")
         return value
 
@@ -60,6 +63,7 @@ class __Administrator_Basic_IN(Schema):
     It does not validate emails, sinde EmailStr does that.
 '''
 class Administrator_CreateAccount_IN(__Administrator_Basic_IN):    #   ACCOUNT CREATING INPUTS
+    """SETTER para validar inputs y luego enviar a la base de datos"""
     name: str
     email: EmailStr
     adminLevel: str
@@ -92,7 +96,7 @@ class Administrator_CreateAccount_IN(__Administrator_Basic_IN):    #   ACCOUNT C
 '''
 class Administrator_LoginAccount_IN(__Administrator_Basic_IN):
     
-    updatedAt: dt.datetime = dt.datetime.now()
+    # updatedAt: dt.datetime = dt.datetime.now()
     
     class Config:
         orm_mode = True
@@ -124,6 +128,7 @@ class Administrator_AskID(Schema):
 '''
 
 class Administrator_CreateAccount_OUT(Schema):
+    """SETTER Para la base de datos"""
     userName: SecretStr
     passwd: SecretStr
     name: str
@@ -138,7 +143,8 @@ class Administrator_CreateAccount_OUT(Schema):
 '''
     These are all the values that should be returned if an admin account is returnd.
 '''
-class Administrator_LookAccount_OUT(Schema):
+class Administrator_LookAccount_OUT(Schema): 
+    """Send data to frontend dashboard table"""
     idAdministrators: int
     userName: str
     password: str
@@ -152,12 +158,21 @@ class Administrator_LookAccount_OUT(Schema):
         orm_mode = True
 
 class Administrator_LoginAccount_OUT(Schema):
-    userName: SecretStr
-    password: SecretStr
+    """ GET to validate information username and password from database"""
+    userName: str
+    passwd: SecretStr
 
     class Config:
         orm_mode = True
 
+
+class Validate_user(Schema):
+    """Schema to send a dictionary when validating a user in login"""
+    status_code: Any
+    body: Any
+
+    class Config:
+        orm_mode = True
 
 if __name__ == "__main__":
     '''
