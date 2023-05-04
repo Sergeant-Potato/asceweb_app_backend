@@ -4,3 +4,4 @@ config.json
 configurations.py
 DigiCertGlobalRootCA.crt.pem
 Chapter_Members_Schemas.py
+jwt.py
