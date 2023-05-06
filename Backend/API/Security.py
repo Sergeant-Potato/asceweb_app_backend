@@ -1,4 +1,6 @@
 from cryptography.hazmat.primitives import hashes
+from datetime import datetime, timedelta
+import os, jwt, pytz
 
 class Secuirity:
      
@@ -26,6 +28,63 @@ class Secuirity:
     def validateUsername(self, input_username: str, db_username: str):
         return input_username == db_username
 
+
+    def get_timenow(self):
+        """This function creates a timestamp that contain an expiration date for the JWT
+            timedelta(hour=int, minute=int, second=int, microsecond=int, day=int) => puts the expiration date
+            parameters of timedelta:
+                days: the number of days in the duration
+                seconds: the number of seconds in the duration (not including the seconds in the days parameter)
+                microseconds: the number of microseconds in the duration (not including the microseconds in the seconds parameter)
+                milliseconds: the number of milliseconds in the duration (equivalent to microseconds / 1000)
+                minutes: the number of minutes in the duration (equivalent to seconds / 60)
+                hours: the number of hours in the duration (equivalent to seconds / 3600)
+                weeks: the number of weeks in the duration (equivalent to days / 7)
+        """
+        return datetime.now(pytz.timezone('America/Puerto_Rico')) + timedelta(minutes=3)
+
+    def createToken(self, data: dict):
+        """Function to create a token in JWT format"""
+        token_payload = {
+            'username': data['username'],
+            'exp_date': self.get_timenow().timestamp(),
+            'level': data['admin_level']
+        }
+        __Secret_Key = os.getenv("SECRET_KEY")
+        return jwt.encode(token_payload,__Secret_Key, algorithm="HS256")
+
+    def decode_token(self,token: str):
+        """Function to decode a token in JWT format"""
+        try:
+            return jwt.decode(token, os.getenv("SECRET_KEY"), algorithms="HS256")
+        except Exception as e:
+            return "Invalid Token format"
+    
+    def validate_token_payload(self,token:str,username:str, role:str):
+        """Function to validate the payload of the token"""
+        Payload = self.decode_token(token)
+        try:
+            return Payload['username'] == username and Payload['level'] == role
+        except Exception as e:
+            return False
+    
+    def validate_exp_token(self, token: str):
+        """This function takes a timestamp variable which convert into a utc time and verify if the time is expired by comparing
+        to utc time now. If timestamp is expired then the return value will be False, else the function returns True"""
+        Payload = self.decode_token(token)
+        
+        try:
+            expiration_time = datetime.fromtimestamp(Payload['exp_date'], pytz.timezone('America/Puerto_Rico'))
+            print('expiration: ', expiration_time)
+            current_time = datetime.now(pytz.timezone('America/Puerto_Rico'))
+            print('curent: ',current_time)
+            if current_time < expiration_time:
+                return True
+            else:
+                raise Exception
+        except Exception as e:
+            return False
+            
 
 if __name__ == "__main__":
     obj = Secuirity(2)
