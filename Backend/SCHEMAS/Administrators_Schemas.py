@@ -14,7 +14,7 @@ from typing import Any
     It handles the inputs for userName and passwd
 '''
 
-class __Administrator_Basic_IN(Schema):
+class __Administrator_Basic_INPUTS(Schema):
     userName: str
     passwd: SecretStr
 
@@ -62,7 +62,7 @@ class __Administrator_Basic_IN(Schema):
 
     It does not validate emails, sinde EmailStr does that.
 '''
-class Administrator_CreateAccount_IN(__Administrator_Basic_IN):    #   ACCOUNT CREATING INPUTS
+class Administrator_CreateAccount_INPUTS(__Administrator_Basic_INPUTS):    #   ACCOUNT CREATING INPUTS
     """SETTER para validar inputs y luego enviar a la base de datos"""
     name: str
     email: EmailStr
@@ -94,32 +94,41 @@ class Administrator_CreateAccount_IN(__Administrator_Basic_IN):    #   ACCOUNT C
     
     Only require userName and passwd
 '''
-class Administrator_LoginAccount_IN(__Administrator_Basic_IN):
+class Administrator_LoginAccount_INPUTS(__Administrator_Basic_INPUTS):
     
-    # updatedAt: dt.datetime = dt.datetime.now()
-    
+    token: str
+
     class Config:
         orm_mode = True
 
+class Administrator_ChangePasswd_INPUTS(__Administrator_Basic_INPUTS):
+    newPasswd: SecretStr
 
-'''
-    Do not know if this is to be used; however this is for inputting the ID of an admin account.
-    The next class is to return the values of such account.
-'''
-class Administrator_AskID(Schema):
-    idAdministrators: int
-
-    @validator('idAdministrators', allow_reuse=True)
-    def isIDAdmin(cls, value: int):
-        if value < 0:
-            raise ValueError("The given value of Admin ID is negative.")
-        if value > 4294967295:
-            raise ValueError("The given value of Admin ID is out of bounds.")
+    @root_validator(allow_reuse=True)
+    def isSame(cls, values: dict):
+        '''
+            These two lines may be a vuln
+        '''
+        val1 = values.get("passwd")
+        val2 = values.get("newPasswd")
+        print(values)
+        if val1 == val2:
+            # print(values)
+            raise ValueError("The Old Password and New Password cannot be the same.")
+        return values
+    
+    @validator('newPasswd', allow_reuse=True)
+    def isPasswd(cls, value: SecretStr):
+        if len(value) < 8:
+            raise ValueError("The New Password must have at least eight (8) characters.")
+        if value.get_secret_value().islower() or value.get_secret_value().isupper():
+            raise ValueError("A New Password must have both upper - case and lower - case characters.")
+        if all(v.isalnum() or v in ('!', '@', '#', '$', '%', '&') for v in value.get_secret_value()) == False:
+            raise ValueError("A New Password must have numbers, letters and symbols.")
         return value
-        
+    
     class Config:
         orm_mode = True
-
 '''
     ----------------------------------------------------------------------------
                             Response Models
@@ -127,7 +136,7 @@ class Administrator_AskID(Schema):
     This data is to be outputed to table
 '''
 
-class Administrator_CreateAccount_OUT(Schema):
+class Administrator_CreateAccount_DB(Schema):
     """SETTER Para la base de datos"""
     userName: SecretStr
     passwd: SecretStr
@@ -143,7 +152,7 @@ class Administrator_CreateAccount_OUT(Schema):
 '''
     These are all the values that should be returned if an admin account is returnd.
 '''
-class Administrator_LookAccount_OUT(Schema): 
+class Administrator_GETTER(Schema): 
     """Send data to frontend dashboard table"""
     idAdministrators: int
     userName: str
@@ -157,19 +166,28 @@ class Administrator_LookAccount_OUT(Schema):
     class Config:
         orm_mode = True
 
-class Administrator_LoginAccount_OUT(Schema):
+class Administrator_LoginAccount_DB(Schema):
     """ GET to validate information username and password from database"""
     userName: str
     passwd: SecretStr
+    token: str
+
+    class Config:
+        orm_mode = True
+
+class Administrator_ChangePasswd_DB(Schema):
+    userName: str
+    oldPasswd: SecretStr
+    newPasswd: SecretStr
 
     class Config:
         orm_mode = True
 
 
-class Validate_user(Schema):
+class Administrator_Validate_User(Schema):
     """Schema to send a dictionary when validating a user in login"""
     status_code: Any
-    data: Any
+    body: Any
 
     class Config:
         orm_mode = True
@@ -179,8 +197,8 @@ if __name__ == "__main__":
         First local test to check if all values to create an admin account are parsed correctly.
     '''
     try:
-        admin1 = Administrator_CreateAccount_IN(userName="Pepe112", passwd="Every#one313", name="Pepe The Frog", email="pepe@gmail.com", adminLevel="GA")
-        admin2 = Administrator_CreateAccount_IN(userName="Pepe221", passwd="12pPpppppppp", name=" ", email="datapp.com", adminLevel="LA")
+        admin1 = Administrator_CreateAccount_INPUTS(userName="Pepe112", passwd="Every#one313", name="Pepe The Frog", email="pepe@gmail.com", adminLevel="GA")
+        admin2 = Administrator_CreateAccount_INPUTS(userName="Pepe221", passwd="12pPpppppppp", name=" ", email="datapp.com", adminLevel="LA")
         #   looking = Administrator_LookAccount(idAdministrators=-1)
     except ValidationError as e:
         print(e)

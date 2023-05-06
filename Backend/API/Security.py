@@ -12,8 +12,9 @@ class Secuirity:
                 self.__rt = rt
         except ValueError:
             print("The given value for rt is out-of-bounds.")
+        self.__SECRET_ENV_KEY = os.getenv("SECRET_KEY")
 
-    def encrypt(self, data: str) -> hex:
+    def encryptHash(self, data: str) -> hex:
         tmp = data
         for i in range(self.__rt):
             digest = hashes.Hash(hashes.SHA256())
@@ -21,7 +22,7 @@ class Secuirity:
             tmp = digest.finalize().hex()
         return tmp
 
-    def verify(self, data: str, hashed: hex) -> bool:
+    def validateHash(self, data: str, hashed: hex) -> bool:
         # print(data, " ", hashed)
         return self.encrypt(data) == hashed
 
@@ -29,7 +30,7 @@ class Secuirity:
         return input_username == db_username
 
 
-    def get_timenow(self):
+    def __getTimeNow(self):
         """This function creates a timestamp that contain an expiration date for the JWT
             timedelta(hour=int, minute=int, second=int, microsecond=int, day=int) => puts the expiration date
             parameters of timedelta:
@@ -47,43 +48,21 @@ class Secuirity:
         """Function to create a token in JWT format"""
         token_payload = {
             'username': data['username'],
-            'exp_date': self.get_timenow().timestamp(),
+            'exp_date': self.__getTimeNow().timestamp(),
             'level': data['admin_level']
         }
-        __Secret_Key = os.getenv("SECRET_KEY")
-        return jwt.encode(token_payload,__Secret_Key, algorithm="HS256")
+        return jwt.encode(token_payload,self.__SECRET_ENV_KEY, algorithm="HS256")
 
-    def decode_token(self,token: str):
-        """Function to decode a token in JWT format"""
-        try:
-            return jwt.decode(token, os.getenv("SECRET_KEY"), algorithms="HS256")
-        except Exception as e:
-            return "Invalid Token format"
+    def decodeToken(self,token: str):
+        return jwt.decode(token, self.__SECRET_ENV_KEY, algorithms="HS256")
+
     
-    def validate_token_payload(self,token:str,username:str, role:str):
+    def validateToken(self,username:str, role:str, token:str):
         """Function to validate the payload of the token"""
-        Payload = self.decode_token(token)
-        try:
-            return Payload['username'] == username and Payload['level'] == role
-        except Exception as e:
-            return False
-    
-    def validate_exp_token(self, token: str):
-        """This function takes a timestamp variable which convert into a utc time and verify if the time is expired by comparing
-        to utc time now. If timestamp is expired then the return value will be False, else the function returns True"""
-        Payload = self.decode_token(token)
-        
-        try:
-            expiration_time = datetime.fromtimestamp(Payload['exp_date'], pytz.timezone('America/Puerto_Rico'))
-            print('expiration: ', expiration_time)
-            current_time = datetime.now(pytz.timezone('America/Puerto_Rico'))
-            print('curent: ',current_time)
-            if current_time < expiration_time:
-                return True
-            else:
-                raise Exception
-        except Exception as e:
-            return False
+        Payload = self.decodeToken(token=token)
+        expiration_time = datetime.fromtimestamp(Payload['exp_date'], pytz.timezone('America/Puerto_Rico'))
+        current_time = datetime.now(pytz.timezone('America/Puerto_Rico'))
+        return Payload['username'] == username and Payload['level'] == role and current_time< expiration_time
             
 
 if __name__ == "__main__":
