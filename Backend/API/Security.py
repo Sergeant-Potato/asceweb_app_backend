@@ -24,7 +24,7 @@ class Secuirity:
 
     def validateHash(self, data: str, hashed: hex) -> bool:
         # print(data, " ", hashed)
-        return self.encrypt(data) == hashed
+        return self.encryptHash(data) == hashed
 
     def validateUsername(self, input_username: str, db_username: str):
         return input_username == db_username
@@ -51,6 +51,7 @@ class Secuirity:
             'exp_date': self.__getTimeNow().timestamp(),
             'level': data['admin_level']
         }
+        #print(self.__SECRET_ENV_KEY)
         return jwt.encode(token_payload,self.__SECRET_ENV_KEY, algorithm="HS256")
 
     def decodeToken(self,token: str):

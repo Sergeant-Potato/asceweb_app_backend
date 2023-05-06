@@ -43,19 +43,21 @@ def getAdmins(db: Session = Depends(get_db)):
 
 @app.post("/ASCEPUPR/ADMIN/CREATE_ACCOUNT/", status_code=HTTP_200_OK)
 def createAdmin(userName:str, passwd:str, name:str, email:str, adminLevel:str, db: Session = Depends(get_db)):
-    admin = Administrators_Schemas.Administrator_CreateAccount_INPUTS(userName=userName, passwd=passwd,name=name,email=email,adminLevel=adminLevel)
-    dbAdmin = ta.getAdminbyEmail(db, email=admin.email)
-    if dbAdmin:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    dbAdmin = ta.getAdminbyUserName(db, username=admin.userName)
-    if dbAdmin:
-        raise HTTPException(status_code=400, detail="User Name already registered")
-    ta.createAdmin(db=db, admin=admin)
-    return {'response':HTTP_200_OK, 'message':"User created"}
+    try:
+        admin = Administrators_Schemas.Administrator_CreateAccount_INPUTS(userName=userName, passwd=passwd,name=name,email=email,adminLevel=adminLevel)
+        dbAdmin = ta.getAdminbyEmail(db, email=admin.email)
+        if dbAdmin:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        dbAdmin = ta.getAdminbyUserName(db, username=admin.userName)
+        if dbAdmin:
+            raise HTTPException(status_code=400, detail="User Name already registered")
+        ta.createAdmin(db=db, admin=admin)
+        return {'response':HTTP_200_OK, 'message':"User created"}
+    except Exception as e:
+        return {'response': HTTP_204_NO_CONTENT, 'message': repr(e)}
 
 @app.get("/ASCEPUPR/ADMIN/LOGIN/", status_code=HTTP_200_OK, response_model=Administrators_Schemas.Administrator_Validate_User)
-def loginAdmin(userName:str, passwd: str, token: str, db: Session = Depends(get_db)):
-    admin = Administrators_Schemas.Administrator_LoginAccount_INPUTS(userName=userName,passwd=passwd,token=token)
+def loginAdmin(userName:str, passwd: str, token: str = "0", db: Session = Depends(get_db)):
     '''
         La variable a es la variable con el contenido retornado por la funcion loginAdmin. Recuerda que retorna una lista con 2
         elementos, donse el primero [0] es un entero y el segundo [1] es el string del token o un texto.
@@ -66,11 +68,15 @@ def loginAdmin(userName:str, passwd: str, token: str, db: Session = Depends(get_
 
         Si no corre, ya que no lo he probado desde antes de los updates, puede que sea por el response model?
     '''
+    #try:
+    admin = Administrators_Schemas.Administrator_LoginAccount_INPUTS(userName=userName,passwd=passwd,token=token)
     a = ta.loginAdmin(db,admin = admin)
     if a[0] >=1 and a[0] <= 3:
         return {"status_code":HTTP_200_OK, 'body':a[1]}
     else:
         return {"status_code":HTTP_401_UNAUTHORIZED, 'body':a[1]}
+    #except Exception as e:
+        #return {'status_code': HTTP_204_NO_CONTENT, 'body': repr(e)}
 
 
 # @app.post("/Content/AdminLogin/")
@@ -95,11 +101,14 @@ def loginAdmin(userName:str, passwd: str, token: str, db: Session = Depends(get_
 
 @app.get("/ASCEPUPR/ADMIN/CHANGE_PASSWD/", status_code=HTTP_200_OK)
 def changeAdminPasswd(userName: str, oldPasswd: str, newPasswd: str, db: Session = Depends(get_db)):
-    admin = Administrators_Schemas.Administrator_ChangePasswd_INPUTS(userName=userName, passwd=oldPasswd, newPasswd=newPasswd)
-    a = ta.changeAdminPasswd(db=db,admin=admin)
-    if a == True:
-        return {"status_code":HTTP_200_OK, 'body':"Password was changed"}
-    return {"status_code":HTTP_401_UNAUTHORIZED, 'body': 'Password Not Changed'}
+    try:
+        admin = Administrators_Schemas.Administrator_ChangePasswd_INPUTS(userName=userName, passwd=oldPasswd, newPasswd=newPasswd)
+        a = ta.changeAdminPasswd(db=db,admin=admin)
+        if a == True:
+            return {"status_code":HTTP_200_OK, 'body':"Password was changed"}
+        return {"status_code":HTTP_401_UNAUTHORIZED, 'body': 'Password Not Changed'}
+    except Exception as e:
+        return {'response': HTTP_204_NO_CONTENT, 'message': repr(e)}
 
 if __name__ == "__main__":
     import uvicorn
