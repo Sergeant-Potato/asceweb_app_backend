@@ -169,7 +169,7 @@ class Administrator_LoginAccount_OUT(Schema):
 class Validate_user(Schema):
     """Schema to send a dictionary when validating a user in login"""
     status_code: Any
-    body: Any
+    data: Any
 
     class Config:
         orm_mode = True
