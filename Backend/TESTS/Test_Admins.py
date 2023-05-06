@@ -64,7 +64,7 @@ def loginAdmin(db: Session, admin: adminSchema.Administrator_LoginAccount_DB) ->
 
         
 def changeAdminPasswd(db: Session, admin: adminSchema.Administrator_ChangePasswd_DB):
-    if db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username and __sc.validateHash(admin.oldPasswd, Administrators_Table.password)).update({'password': __sc.encryptHash(admin.newPasswd)}):
+    if db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username and __sc.validateHash(admin.oldPasswd.get_secret_value(), Administrators_Table.password)).update({'password': __sc.encryptHash(admin.newPasswd.get_secret_value())}):
         return True
     return False
 
