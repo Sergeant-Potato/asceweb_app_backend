@@ -86,6 +86,7 @@ def getAdmins(db: Session = Depends(get_db)):
 #     # return {"status":HTTP_200_OK, 'message':a}
 #     # return {'userName':a[0], 'password':a[1], 'status': HTTP_200_OK}
 
+"""axios.get(`https://your_api_url.com/ascepupr/user/login/?username=${username}&password=${password}&token=${token}`) """
 @app.get("/ascepupr/user/login/", status_code=HTTP_200_OK, response_model=Administrators_Schemas.Validate_user)
 def validation(username: str, password: SecretStr, token: str = None, db: Session = Depends(get_db)):
     a = ta.validateUsers(db,username, password, token)
@@ -94,7 +95,14 @@ def validation(username: str, password: SecretStr, token: str = None, db: Sessio
     else:
         return {"status_code":HTTP_401_UNAUTHORIZED, 'data':a['body']}
 
-
+"""axios.get(`https://your_api_url.com/ascepupr/user/login/${username}/${password}/${token}`) """
+@app.get("/ascepupr/user/login/{username:str}/{password:str}/{token:str}", status_code=HTTP_200_OK, response_model=Administrators_Schemas.Validate_user)
+def val(username: str, password: SecretStr, token: str = None, db: Session = Depends(get_db)):
+    a = ta.validateUsers(db,username, password, token)
+    if a['status_code'] == 200:
+        return {"status_code":HTTP_200_OK, 'data':a['body']}
+    else:
+        return {"status_code":HTTP_401_UNAUTHORIZED, 'data':a['body']}
 
 
 if __name__ == "__main__":
