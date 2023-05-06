@@ -62,7 +62,7 @@ class Secuirity:
         Payload = self.decodeToken(token=token)
         expiration_time = datetime.fromtimestamp(Payload['exp_date'], pytz.timezone('America/Puerto_Rico'))
         current_time = datetime.now(pytz.timezone('America/Puerto_Rico'))
-        return Payload['username'] == username and Payload['level'] == role and current_time< expiration_time
+        return [Payload['username'] == username and Payload['level'] == role, current_time< expiration_time]
             
 
 if __name__ == "__main__":
