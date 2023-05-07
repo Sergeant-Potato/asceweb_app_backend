@@ -47,24 +47,24 @@ class HttpReturn():
 
 def loginAdmin(db: Session, admin: adminSchema.Administrator_LoginAccount_DB) -> list:
     """Validate username and password as well as token"""
-    ''' Mira mano, lo hice asi ya que el codigo que me enviaste tiene tres status codes iguales y uno diferente. Hace tus ifs, pero retorn dos
-        cosas, un entero, el cual, funcionara como un use case, es decir: si es 1, paso algo, si es 2, pasa otra cosa... etc.; tambien, retorna
-        o el token o un texto. No debe haber problema con esto por el token y el texto ser strings. Busca el endpoint que usa esto en el main.'''
     db_information = db.query(Administrators_Table.username, Administrators_Table.password, Administrators_Table.admin_level).filter(Administrators_Table.username == admin.userName).first()
-    if __sc.validateUsername(admin.userName, db_information[0]) and __sc.validateHash(admin.passwd.get_secret_value(), str(db_information[1])) and admin.token == "0":
-        return [1, __sc.createToken({'username': admin.userName, 'admin_level':str(db_information[2])})]
-    elif admin.token != "0" and __sc.validateToken(admin.userName,db_information[2],admin.token) == [True, True]:
-        return [2, "Successful Authenticacion!"]
-    elif admin.token != "0" and __sc.validateToken(admin.userName,db_information[2],admin.token) == [True, False]:
-        return [3, __sc.createToken({'username': admin.userName, 'admin_level':db_information[2]})]
-    elif admin.token != "0" and __sc.validateToken(admin.userName,db_information[2],admin.token) == [False, True]:
-        return [4, "Invalid Token"]
+    if db_information is not None and __sc.validateUsername(admin.userName, db_information[0]) and __sc.validateHash(admin.passwd.get_secret_value(), str(db_information[1])):
+        if( admin.token == None):
+            return [1, __sc.createToken({'username': admin.userName, 'admin_level':str(db_information[2])})]
+        elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [True, True]:
+            return [2, "Successful Authenticacion!"]
+        elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [True, False]:
+            return [3, __sc.createToken({'username': admin.userName, 'admin_level':db_information[2]})]
+        elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [False, True]:
+            return [4, "Invalid Token"]
     else:
         return [5, "Invalid Username or Password"]
 
-        
 def changeAdminPasswd(db: Session, admin: adminSchema.Administrator_ChangePasswd_DB):
-    if db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username and __sc.validateHash(admin.oldPasswd.get_secret_value(), Administrators_Table.password)).update({'password': __sc.encryptHash(admin.newPasswd.get_secret_value())}):
-        return True
-    return False
+    tmp = db.query(Administrators_Table.username, Administrators_Table.password).filter(admin.userName == Administrators_Table.username, __sc.validateHash(admin.passwd.get_secret_value(), Administrators_Table.password)).first()
+    if tmp is None:
+        return False
+    db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'password': __sc.encryptHash(admin.newPasswd.get_secret_value())})
+    db.commit()
+    return True
 

@@ -96,7 +96,7 @@ class Administrator_CreateAccount_INPUTS(__Administrator_Basic_INPUTS):    #   A
 '''
 class Administrator_LoginAccount_INPUTS(__Administrator_Basic_INPUTS):
     
-    token: str
+    token: str = None
 
     class Config:
         orm_mode = True
@@ -170,14 +170,14 @@ class Administrator_LoginAccount_DB(Schema):
     """ GET to validate information username and password from database"""
     userName: str
     passwd: SecretStr
-    token: str
+    token: str = None
 
     class Config:
         orm_mode = True
 
 class Administrator_ChangePasswd_DB(Schema):
     userName: str
-    oldPasswd: SecretStr
+    passwd: SecretStr
     newPasswd: SecretStr
 
     class Config:

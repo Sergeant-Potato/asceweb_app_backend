@@ -11,7 +11,7 @@ class Secuirity:
             else:
                 self.__rt = rt
         except ValueError:
-            print("The given value for rt is out-of-bounds.")
+            return "The given value for rt is out-of-bounds."
         self.__SECRET_ENV_KEY = os.getenv("SECRET_KEY")
 
     def encryptHash(self, data: str) -> hex:
@@ -27,6 +27,8 @@ class Secuirity:
         return self.encryptHash(data) == hashed
 
     def validateUsername(self, input_username: str, db_username: str):
+        if db_username == None:
+            return False
         return input_username == db_username
 
 

@@ -10,17 +10,13 @@
 #     import uvicorn
 #     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
 
-import os
-from fastapi import Depends, FastAPI, HTTPException, APIRouter, Response
+import traceback
+from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import SecretStr
-from typing import Optional
-
 from Backend.TESTS import Test_Admins as ta
-from Backend.DATABASE.Administrators_Table import Administrators_Table
 from Backend.SCHEMAS import Administrators_Schemas
 from Backend.CONFIG.connection import engine, Base, SessionLocal
-from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT, HTTP_401_UNAUTHORIZED, HTTP_200_OK
+from starlette.status import HTTP_204_NO_CONTENT, HTTP_401_UNAUTHORIZED, HTTP_200_OK
 
 # chapter_members.Base.metadata.create_all(bind=connection.engine)
 Base.metadata.create_all(bind = engine)
@@ -38,8 +34,11 @@ def get_db():
 # Changed this functino response model
 @app.get("/ASCEPUPR/ADMIN/GET_ADMINS/", response_model=list[Administrators_Schemas.Administrator_GETTER])
 def getAdmins(db: Session = Depends(get_db)):
-    dbAdmins = ta.getAdmins(db)
-    return dbAdmins
+    try:
+        dbAdmins = ta.getAdmins(db)
+        return dbAdmins
+    except Exception:
+        return {'response': HTTP_204_NO_CONTENT, 'message': traceback.format_exc()}
 
 @app.post("/ASCEPUPR/ADMIN/CREATE_ACCOUNT/", status_code=HTTP_200_OK)
 def createAdmin(userName:str, passwd:str, name:str, email:str, adminLevel:str, db: Session = Depends(get_db)):
@@ -54,10 +53,10 @@ def createAdmin(userName:str, passwd:str, name:str, email:str, adminLevel:str, d
         ta.createAdmin(db=db, admin=admin)
         return {'response':HTTP_200_OK, 'message':"User created"}
     except Exception as e:
-        return {'response': HTTP_204_NO_CONTENT, 'message': repr(e)}
+        return {'response': HTTP_204_NO_CONTENT, 'message': repr(e)}    # I left this since this can help us, still. It can be deleted later on.
 
 @app.get("/ASCEPUPR/ADMIN/LOGIN/", status_code=HTTP_200_OK, response_model=Administrators_Schemas.Administrator_Validate_User)
-def loginAdmin(userName:str, passwd: str, token: str = "0", db: Session = Depends(get_db)):
+def loginAdmin(userName:str, passwd: str, token: str = None, db: Session = Depends(get_db)):
     '''
         La variable a es la variable con el contenido retornado por la funcion loginAdmin. Recuerda que retorna una lista con 2
         elementos, donse el primero [0] es un entero y el segundo [1] es el string del token o un texto.
@@ -68,15 +67,15 @@ def loginAdmin(userName:str, passwd: str, token: str = "0", db: Session = Depend
 
         Si no corre, ya que no lo he probado desde antes de los updates, puede que sea por el response model?
     '''
-    #try:
-    admin = Administrators_Schemas.Administrator_LoginAccount_INPUTS(userName=userName,passwd=passwd,token=token)
-    a = ta.loginAdmin(db,admin = admin)
-    if a[0] >=1 and a[0] <= 3:
-        return {"status_code":HTTP_200_OK, 'body':a[1]}
-    else:
-        return {"status_code":HTTP_401_UNAUTHORIZED, 'body':a[1]}
-    #except Exception as e:
-        #return {'status_code': HTTP_204_NO_CONTENT, 'body': repr(e)}
+    try:
+        admin = Administrators_Schemas.Administrator_LoginAccount_INPUTS(userName=userName,passwd=passwd,token=token)
+        a = ta.loginAdmin(db,admin = admin)
+        if a[0] >=1 and a[0] <= 3:
+            return {"status_code":HTTP_200_OK, 'body':a[1]}
+        else:
+            return {"status_code":HTTP_401_UNAUTHORIZED, 'body':a[1]}
+    except Exception as e:
+        return {'status_code': HTTP_204_NO_CONTENT, 'body': repr(e)}
 
 
 # @app.post("/Content/AdminLogin/")
@@ -106,9 +105,9 @@ def changeAdminPasswd(userName: str, oldPasswd: str, newPasswd: str, db: Session
         a = ta.changeAdminPasswd(db=db,admin=admin)
         if a == True:
             return {"status_code":HTTP_200_OK, 'body':"Password was changed"}
-        return {"status_code":HTTP_401_UNAUTHORIZED, 'body': 'Password Not Changed'}
+        return {"status_code":HTTP_401_UNAUTHORIZED, 'body': 'Password Not Changed: Invalid User Name or Password'}
     except Exception as e:
-        return {'response': HTTP_204_NO_CONTENT, 'message': repr(e)}
+        return {'status_code': HTTP_204_NO_CONTENT, 'body': repr(e)}
 
 if __name__ == "__main__":
     import uvicorn
