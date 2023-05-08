@@ -135,6 +135,8 @@ def deleteAdmin(masterAdminToken: str, db:Session = Depends(get_db)):
         happen, and what we were about to do. Did we have any doubts? Any private, traitorous thoughts? Perhaps, but no one 
         said a word. Not on the flight to Coruscant, not when Order 66 came down, and not when we marched into the Jedi Temple. 
         Not a word.
+
+        This will not delete master admins for security measure.
     '''
     try:
         a = ta.deleteAdminAll(db=db, admin = Administrators_Schemas.Administrator_MasterAdminToken(masterAdminToken=masterAdminToken))

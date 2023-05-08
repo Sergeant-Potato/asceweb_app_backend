@@ -122,11 +122,11 @@ def changeAdminPasswdEmail(db: Session, admin: adminSchema.Administrator_ChangeP
 #     return False
 
 def deleteAdminEntry(db: Session, admin: adminSchema.Administrator_Delete_Entry_INPUTS):
-    tmp = db.query(Administrators_Table.username,Administrators_Table.admin_level).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
+    tmp = db.query(Administrators_Table.username,Administrators_Table.admin_level, Administrators_Table.email).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
     if tmp is None:
         return False
     
-    if __sc.validateToken(tmp[0], tmp[1], admin.masterAdminToken) == [True, True] and tmp[1] == "MA":
+    if __sc.validateToken(tmp[0], tmp[1], admin.masterAdminToken) == [True, True] and tmp[1] == "MA" and tmp[2] != admin.email:
         tmp = db.query(Administrators_Table).filter(admin.email == Administrators_Table.email).first()
         if tmp is None:
             return False
@@ -140,7 +140,7 @@ def deleteAdminAll(db:Session, admin: adminSchema.Administrator_MasterAdminToken
     if tmp is None:
         return False
     if __sc.validateToken(tmp[0],tmp[1],admin.masterAdminToken) == [True, True] and tmp[1] == "MA":
-        db.query(Administrators_Table).delete()
+        db.query(Administrators_Table).filter(Administrators_Table.admin_level != "MA").delete()
         db.commit()
         return True
     return False
