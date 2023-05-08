@@ -70,7 +70,7 @@ class Administrator_CreateAccount_INPUTS(__Administrator_Basic_INPUTS):    #   A
     createdAt: dt.datetime = dt.datetime.now()
     updatedAt: dt.datetime = dt.datetime.now()
 
-    masterAdminLevel: str
+    masterAdminToken: str
 
     @validator('name', allow_reuse=True)
     def isName(cls, value: str):
@@ -80,25 +80,13 @@ class Administrator_CreateAccount_INPUTS(__Administrator_Basic_INPUTS):    #   A
          raise ValueError("A name only contains letters.")
      return value
     
-    @root_validator(allow_reuse=True)
-    def isAdminLevel(cls, values: dict):
-        val1 = values.get("adminLevel")
-        val2 = values.get("masterAdminLevel")
+    @validator('adminLevel',allow_reuse=True)
+    def isAdminLevel(cls, value: str):
 
-        if (len(val1) <= 0 or len(val1) > 2) and (len(val2) <= 0 or len(val2) > 2):
-            raise ValueError("The admin levels value must have two (2) characters at all times.")
-        if not(val1 == "MA" or val1 == "GA"):
-            raise ValueError("The admin level value does not have any of the accepted values.")
-        if not(val2 == "MA"):
-            raise ValueError("This account does not have the necessary priviliges to create new admins.")
-        return values
-    
-    @validator('masterAdminLevel', allow_reuse=True)
-    def isMasterAdminLevel(cls, value: str):
         if (len(value) <= 0 or len(value) > 2):
-            raise ValueError("The admin level value must have two (2) characters at all times.")
-        if value != "MA":
-            raise ValueError("This account does not have the necessary priviliges to edit admins.")
+            raise ValueError("The admin levels value must have two (2) characters at all times.")
+        if not(value == "MA" or value == "GA"):
+            raise ValueError("The admin level value does not have any of the accepted values.")
         return value
     
     class Config:
@@ -116,24 +104,13 @@ class Administrator_LoginAccount_INPUTS(__Administrator_Basic_INPUTS):
     class Config:
         orm_mode = True
 
-class Administrator_ChangePasswd_INPUTS(Schema):
+class Administrator_ChangePasswdEmail_INPUTS(Schema):
     userName: str
-    passwd: SecretStr
-    newPasswd: SecretStr
+    newPasswd: SecretStr = None
+    newEmail: EmailStr = None
     updatedAt: dt.datetime = dt.datetime.now()
 
-    masterAdminLevel: str = None
-    
-    @root_validator(allow_reuse=True)
-    def isSame(cls, values: dict):
-        '''
-            These two lines may be a vuln
-        '''
-        val1 = values.get("passwd")
-        val2 = values.get("newPasswd")
-        if val1 == val2:
-            raise ValueError("The Old Password and New Password cannot be the same.")
-        return values
+    masterAdminToken: str
     
     @validator('userName', allow_reuse=True)
     def isUserName(cls, value: str):
@@ -143,35 +120,17 @@ class Administrator_ChangePasswd_INPUTS(Schema):
             raise ValueError("An User Name must contain alphabetic and numeric characters.")
         if value.islower() or value.isupper():
             raise ValueError("A User Name must have both upper - case and lower - case characters.")
-        return value
-
-    @validator('passwd', allow_reuse=True)
-    def isPasswd(cls, value: SecretStr):
-        if len(value) < 8:
-            raise ValueError("The Password must have at least eight (8) characters.")
-        if value.get_secret_value().islower() or value.get_secret_value().isupper():
-            raise ValueError("A Password must have both upper - case and lower - case characters.")
-        if all(v.isalnum() or v in ('!', '@', '#', '$', '%', '&') for v in value.get_secret_value()) == False:
-            raise ValueError("A Password must have numbers, letters and symbols.")
         return value
     
     @validator('newPasswd', allow_reuse=True)
     def isPasswd(cls, value: SecretStr):
-        if len(value) < 8:
-            raise ValueError("The New Password must have at least eight (8) characters.")
-        if value.get_secret_value().islower() or value.get_secret_value().isupper():
-            raise ValueError("A New Password must have both upper - case and lower - case characters.")
-        if all(v.isalnum() or v in ('!', '@', '#', '$', '%', '&') for v in value.get_secret_value()) == False:
-            raise ValueError("A New Password must have numbers, letters and symbols.")
-        return value
-    
-    @validator('masterAdminLevel', allow_reuse=True)
-    def isMasterAdminLevel(cls, value: str):
         if value != None:
-            if (len(value) <= 0 or len(value) > 2):
-                raise ValueError("The admin level value must have two (2) characters at all times.")
-            if value != "MA":
-                raise ValueError("This account does not have the necessary priviliges to edit admins.")
+            if len(value) < 8:
+                raise ValueError("The New Password must have at least eight (8) characters.")
+            if value.get_secret_value().islower() or value.get_secret_value().isupper():
+                raise ValueError("A New Password must have both upper - case and lower - case characters.")
+            if all(v.isalnum() or v in ('!', '@', '#', '$', '%', '&') for v in value.get_secret_value()) == False:
+                raise ValueError("A New Password must have numbers, letters and symbols.")
         return value
     
     class Config:
@@ -179,123 +138,111 @@ class Administrator_ChangePasswd_INPUTS(Schema):
 
 
 
-class Administrator_ChangeName_INPUTS(Schema):
-    userName: str
-    newName: str
-    updatedAt: dt.datetime = dt.datetime.now()
+# class Administrator_ChangeName_INPUTS(Schema):
+#     userName: str
+#     newName: str
+#     updatedAt: dt.datetime = dt.datetime.now()
 
-    @validator('*', allow_reuse=True, pre=True)
-    def isEmpty(cls, value: str | dt.datetime):
-        if type(value) is str and (value == "" or value == None):
-            raise ValueError("None of the Fields can be empty!")
-        return value
+#     masterAdminToken: str = None
+
+#     @validator('*', allow_reuse=True, pre=True)
+#     def isEmpty(cls, value: str | dt.datetime):
+#         if type(value) is str and (value == "" or value == None):
+#             raise ValueError("None of the Fields can be empty!")
+#         return value
     
-    @validator('userName', allow_reuse=True)
-    def isUserName(cls, value: str):
-        if len(value) < 5:
-            raise ValueError("The User Name must have more than four (4) characters.")
-        if value.isalnum() == False:
-            raise ValueError("An User Name must contain alphabetic and numeric characters.")
-        if value.islower() or value.isupper():
-            raise ValueError("A User Name must have both upper - case and lower - case characters.")
-        return value
+#     @validator('userName', allow_reuse=True)
+#     def isUserName(cls, value: str):
+#         if len(value) < 5:
+#             raise ValueError("The User Name must have more than four (4) characters.")
+#         if value.isalnum() == False:
+#             raise ValueError("An User Name must contain alphabetic and numeric characters.")
+#         if value.islower() or value.isupper():
+#             raise ValueError("A User Name must have both upper - case and lower - case characters.")
+#         return value
     
-    @validator('newName', allow_reuse=True)
-    def isName(cls, value: str):
-     if any(v[0].islower() for v in value.split()):
-         raise ValueError("All parts of any name should contain upper - case characters.")
-     if any(v.isalpha() for v in value.split()) == False:
-         raise ValueError("A name only contains letters.")
-     return value
+#     @validator('newName', allow_reuse=True)
+#     def isName(cls, value: str):
+#      if any(v[0].islower() for v in value.split()):
+#          raise ValueError("All parts of any name should contain upper - case characters.")
+#      if any(v.isalpha() for v in value.split()) == False:
+#          raise ValueError("A name only contains letters.")
+#      return value
 
-    class Config:
-        orm_mode = True
+#     class Config:
+#         orm_mode = True
 
-class Administrator_ChangeEmail_INPUTS(Schema):
-    userName: str
-    newEmail: EmailStr
-    updatedAt: dt.datetime = dt.datetime.now()
+# class Administrator_ChangeEmail_INPUTS(Schema):
+#     userName: str
+#     newEmail: EmailStr
+#     updatedAt: dt.datetime = dt.datetime.now()
 
-    @validator('*', allow_reuse=True, pre=True)
-    def isEmpty(cls, value: str | dt.datetime):
-        if type(value) is str and (value == "" or value == None):
-            raise ValueError("None of the Fields can be empty!")
-        return value
+#     masterAdminToken: str = None
+
+#     @validator('*', allow_reuse=True, pre=True)
+#     def isEmpty(cls, value: str | dt.datetime):
+#         if type(value) is str and (value == "" or value == None):
+#             raise ValueError("None of the Fields can be empty!")
+#         return value
     
-    @validator('userName', allow_reuse=True)
-    def isUserName(cls, value: str):
-        if len(value) < 5:
-            raise ValueError("The User Name must have more than four (4) characters.")
-        if value.isalnum() == False:
-            raise ValueError("An User Name must contain alphabetic and numeric characters.")
-        if value.islower() or value.isupper():
-            raise ValueError("A User Name must have both upper - case and lower - case characters.")
-        return value    
-    class Config:
-        orm_mode: True
+#     @validator('userName', allow_reuse=True)
+#     def isUserName(cls, value: str):
+#         if len(value) < 5:
+#             raise ValueError("The User Name must have more than four (4) characters.")
+#         if value.isalnum() == False:
+#             raise ValueError("An User Name must contain alphabetic and numeric characters.")
+#         if value.islower() or value.isupper():
+#             raise ValueError("A User Name must have both upper - case and lower - case characters.")
+#         return value    
+#     class Config:
+#         orm_mode: True
     
 
 
-class Administrator_ChangeAll_INPUTS(Administrator_ChangePasswd_INPUTS):
-    newName: str
-    newEmail: EmailStr
-    newLevel: str
+# class Administrator_ChangeAll_INPUTS(Administrator_ChangePasswdEmail_INPUTS):
+#     newName: str
+#     newEmail: EmailStr
+#     newLevel: str
 
-    @validator('newName', allow_reuse=True)
-    def isName(cls, value: str):
-     if any(v[0].islower() for v in value.split()):
-         raise ValueError("All parts of any name should contain upper - case characters.")
-     if any(v.isalpha() for v in value.split()) == False:
-         raise ValueError("A name only contains letters.")
-     return value
+#     @validator('newName', allow_reuse=True)
+#     def isName(cls, value: str):
+#      if any(v[0].islower() for v in value.split()):
+#          raise ValueError("All parts of any name should contain upper - case characters.")
+#      if any(v.isalpha() for v in value.split()) == False:
+#          raise ValueError("A name only contains letters.")
+#      return value
     
-    @validator('newLevel', allow_reuse=True)
-    def isAdminLevel(cls, value: str):
-        if len(value) <= 0 or len(value) > 2:
-            raise ValueError("The admin level value must have two (2) characters at all times.")
-        if not(value == "MA" or value == "GA"):
-            raise ValueError("The admin level value does not have any of the accepted values.")
-        return value
-    class Config:
-        orm_mode: True
+#     @validator('newLevel', allow_reuse=True)
+#     def isAdminLevel(cls, value: str):
+#         if len(value) <= 0 or len(value) > 2:
+#             raise ValueError("The admin level value must have two (2) characters at all times.")
+#         if not(value == "MA" or value == "GA"):
+#             raise ValueError("The admin level value does not have any of the accepted values.")
+#         return value
+#     class Config:
+#         orm_mode: True
 
 
 class Administrator_Delete_Entry_INPUTS(Schema):
-    masterAdminLevel: str
-    state: str = "--i"
-    userName: str = None
+    masterAdminToken: str
+    email: EmailStr
 
     @validator('*', allow_reuse=True, pre=True)
     def isEmpty(cls, value: str | dt.datetime):
         if type(value) is str and (value == "" or value == None):
             raise ValueError("None of the Fields can be empty!")
         return value
-    
-    @validator('userName', allow_reuse=True)
-    def isUserName(cls, value: str):
-        if value != None:
-            if len(value) < 5:
-                raise ValueError("The User Name must have more than four (4) characters.")
-            if value.isalnum() == False:
-                raise ValueError("An User Name must contain alphabetic and numeric characters.")
-            if value.islower() or value.isupper():
-                raise ValueError("A User Name must have both upper - case and lower - case characters.")
+    class Config:
+        orm_mode = True
+
+class Administrator_MasterAdminToken(Schema):
+    masterAdminToken: str
+
+    @validator('*', allow_reuse=True, pre=True)
+    def isEmpty(cls, value: str | dt.datetime):
+        if type(value) is str and (value == "" or value == None):
+            raise ValueError("None of the Fields can be empty!")
         return value
-    
-    @validator('state', allow_reuse=True)
-    def isState(cls, value: str):
-        if not(value == "--i" or value == "--a"):
-            raise ValueError("The state of deletion is not of any of the accepted values.")
-        return value
-    
-    @validator('masterAdminLevel', allow_reuse=True)
-    def isMasterAdminLevel(cls, value: str):
-        if (len(value) <= 0 or len(value) > 2):
-            raise ValueError("The admin level value must have two (2) characters at all times.")
-        if value != "MA":
-            raise ValueError("This account does not have the necessary priviliges to edit admins.")
-        return value
-    
     class Config:
         orm_mode = True
 
@@ -315,6 +262,8 @@ class Administrator_CreateAccount_DB(Schema):
     adminLevel: str
     createdAt: dt.datetime
     updatedAt: dt.datetime
+
+    masterAdminToken: str
 
     class Config:
         orm_mode = True
@@ -345,46 +294,50 @@ class Administrator_LoginAccount_DB(Schema):
     class Config:
         orm_mode = True
 
-class Administrator_ChangePasswd_DB(Schema):
+class Administrator_ChangePasswdEmail_DB(Schema):
     userName: str
-    passwd: SecretStr
     newPasswd: SecretStr
+    newEmail: EmailStr
     updatedAt: dt.datetime
 
-    masterAdminLevel: str
+    masterAdminToken: str
 
     class Config:
         orm_mode = True
 
-class Administrator_ChangeName_DB(Schema):
-    userName: str
-    name: str
-    updatedAt: dt.datetime
+# class Administrator_ChangeName_DB(Schema):
+#     userName: str
+#     name: str
+#     updatedAt: dt.datetime
 
-    class Config:
-        orm_mode = True
+#     masterAdminToken: str
 
-class Administrator_ChangeEmail_DB(Schema):
-    userName: str
-    email: str
-    updatedAt: dt.datetime
+#     class Config:
+#         orm_mode = True
 
-    class Config:
-        orm_mode = True
+# class Administrator_ChangeEmail_DB(Schema):
+#     userName: str
+#     email: str
+#     updatedAt: dt.datetime
 
-class Administrator_ChangeAll_DB(Schema):
-    userName: str
+#     masterAdminToken: str
+
+#     class Config:
+#         orm_mode = True
+
+# class Administrator_ChangeAll_DB(Schema):
+#     userName: str
     
-    newPasswd: SecretStr
-    newName: str
-    newEmail: str
-    newLevel: str
-    updatedAt: dt.datetime
+#     newPasswd: SecretStr
+#     newName: str
+#     newEmail: str
+#     newLevel: str
+#     updatedAt: dt.datetime
 
-    masterAdminLevel: str
+#     masterAdminToken: str
 
-    class Config:
-        orm_mode = True
+#     class Config:
+#         orm_mode = True
 
 class Administrator_Validate_User(Schema):
     """Schema to send a dictionary when validating a user in login"""

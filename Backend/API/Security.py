@@ -44,7 +44,7 @@ class Secuirity:
                 hours: the number of hours in the duration (equivalent to seconds / 3600)
                 weeks: the number of weeks in the duration (equivalent to days / 7)
         """
-        return datetime.now(pytz.timezone('America/Puerto_Rico')) + timedelta(minutes=3)
+        return datetime.now(pytz.timezone('America/Puerto_Rico')) + timedelta(minutes=120)
 
     def createToken(self, data: dict):
         """Function to create a token in JWT format"""

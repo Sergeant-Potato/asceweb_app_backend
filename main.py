@@ -32,25 +32,47 @@ def get_db():
 
 # Changed this functino response model
 @app.get("/ASCEPUPR/ADMIN/GET_ADMINS/", response_model=list[Administrators_Schemas.Administrator_GETTER])
-def getAdmins(db: Session = Depends(get_db)):
+def getAdmins(masterAdminToken: str, db: Session = Depends(get_db)):
     try:
-        dbAdmins = ta.getAdmins(db)
+        dbAdmins = ta.getAdmins(db,admin=Administrators_Schemas.Administrator_MasterAdminToken(masterAdminToken=masterAdminToken))
         return dbAdmins
     except Exception:
         return {'response': 500, 'message': traceback.format_exc()}
 
 @app.post("/ASCEPUPR/ADMIN/CREATE_ACCOUNT/")
-def createAdmin(userName:str, passwd:str, name:str, email:str, adminLevel:str,masterAdminLevel:str, db: Session = Depends(get_db)):
+def createAdmin(userName:str, passwd:str, name:str, email:str, adminLevel:str,masterAdminToken:str, db: Session = Depends(get_db)):
     try:
-        admin = Administrators_Schemas.Administrator_CreateAccount_INPUTS(userName=userName, passwd=passwd,name=name,email=email,adminLevel=adminLevel, masterAdminLevel=masterAdminLevel)
+        admin = Administrators_Schemas.Administrator_CreateAccount_INPUTS(userName=userName, passwd=passwd,name=name,email=email,adminLevel=adminLevel, masterAdminToken=masterAdminToken)
         dbAdmin = ta.getAdminbyEmail(db, email=admin.email)
         if dbAdmin:
             raise HTTPException(status_code=409, detail="Email already registered")
         dbAdmin = ta.getAdminbyUserName(db, username=admin.userName)
         if dbAdmin:
             raise HTTPException(status_code=409, detail="User Name already registered")
-        ta.createAdmin(db=db, admin=admin)
-        return {'response':201, 'message':"User created"}
+        if ta.createAdmin(db=db, admin=admin):
+            return {'response':201, 'message':"User created"}
+        else:
+            raise Exception
+    except Exception as e:
+        return {'response': 500, 'message': repr(e)}    # I left this since this can help us, still. It can be deleted later on.
+
+@app.post("/ASCEPUPR/ADMIN/CREATE_MASTER_ADMIN/")
+def createAdmin(userName:str, passwd:str, name:str, email:str, db: Session = Depends(get_db)):
+    '''
+        Testing purposes or failsafe
+    '''
+    try:
+        admin = Administrators_Schemas.Administrator_CreateAccount_INPUTS(userName=userName, passwd=passwd,name=name,email=email,adminLevel="MA", masterAdminToken="0")
+        dbAdmin = ta.getAdminbyEmail(db, email=admin.email)
+        if dbAdmin:
+            raise HTTPException(status_code=409, detail="Email already registered")
+        dbAdmin = ta.getAdminbyUserName(db, username=admin.userName)
+        if dbAdmin:
+            raise HTTPException(status_code=409, detail="User Name already registered")
+        if ta.createMasterAdmin(db=db, admin=admin):
+            return {'response':201, 'message':"User created"}
+        else:
+            raise Exception
     except Exception as e:
         return {'response': 500, 'message': repr(e)}    # I left this since this can help us, still. It can be deleted later on.
 
@@ -84,32 +106,43 @@ def loginAdmin(userName:str, passwd: str, token: str = None, db: Session = Depen
 #     # return {"status":HTTP_200_OK, 'message':a}
 #     # return {'userName':a[0], 'password':a[1], 'status': HTTP_200_OK}
 
-@app.get("/ASCEPUPR/ADMIN/CHANGE_PASSWD/")
-def changeAdminPasswd(userName: str, newPasswd: str, oldPasswd: str = "", masterAdminLevel:str=None, db: Session = Depends(get_db)):
+@app.get("/ASCEPUPR/ADMIN/CHANGE_PASSWD_EMAIL/")
+def changeAdminPasswd(userName: str, masterAdminToken: str, newPasswd: str = None, newEmail: str = None, db: Session = Depends(get_db)):
     try:
-        admin = Administrators_Schemas.Administrator_ChangePasswd_INPUTS(userName=userName, passwd=oldPasswd, newPasswd=newPasswd,masterAdminLevel=masterAdminLevel)
-        a = ta.changeAdminPasswd(db=db,admin=admin)
+        admin = Administrators_Schemas.Administrator_ChangePasswdEmail_INPUTS(userName=userName,masterAdminToken=masterAdminToken, newPasswd=newPasswd,newEmail=newEmail)
+        a = ta.changeAdminPasswdEmail(db=db,admin=admin)
         if a == True:
-            return {"status_code":200, 'body':"Password was changed"}
-        return {"status_code":401, 'body': 'Password Not Changed: Invalid User Name or Password'}
+            return {"status_code":200, 'body':"Data was changed."}
+        return {"status_code":401, 'body': 'Data was not changed: Invalid User Name'}
     except Exception as e:
         return {'status_code': 500, 'body': repr(e)}
     
-@app.get("/ASCEPUPR/ADMIN/ORDER_66/")
-def deleteAdmin(level: str, state: str = "--i", userName: str = None, db:Session = Depends(get_db)):
-    '''
-        state = "--i" for individual entries; must supply with userName of entry to deleted.
-        state = "--a" to kill table
-    '''
+@app.get("/ASCEPUPR/ADMIN/DEL_ACCOUNT/")
+def deleteAdmin(masterAdminToken: str, email: str, db:Session = Depends(get_db)):
     try:
-        a = ta.deleteAdminEntry(db=db, admin = Administrators_Schemas.Administrator_Delete_Entry_INPUTS(masterAdminLevel=level, state=state, userName=userName))
+        a = ta.deleteAdminEntry(db=db, admin = Administrators_Schemas.Administrator_Delete_Entry_INPUTS(masterAdminToken=masterAdminToken, email=email))
         if a == True:
             return {"status_code":200, 'body':"Deletion was a success."}
-        return {"status_code":401, 'body': 'Deletion was not successful. Check if User Name, admin level and state of execution were correct.'}
+        return {"status_code":401, 'body': 'Deletion was not successful. Check if token and email were correct.'}
     except Exception as e:
         return {'status_code': 500, 'body': repr(e)}
 
-
+@app.get("/ASCEPUPR/ADMIN/DEL_ALL/")
+def deleteAdmin(masterAdminToken: str, db:Session = Depends(get_db)):
+    '''
+        What I remember about the rise of the Empire is ... is how quiet it was. During the waning hours of the Clone Wars, 
+        the 501st Legion was discreetly transferred back to Coruscant. It was a silent trip. We all knew what was about to 
+        happen, and what we were about to do. Did we have any doubts? Any private, traitorous thoughts? Perhaps, but no one 
+        said a word. Not on the flight to Coruscant, not when Order 66 came down, and not when we marched into the Jedi Temple. 
+        Not a word.
+    '''
+    try:
+        a = ta.deleteAdminAll(db=db, admin = Administrators_Schemas.Administrator_MasterAdminToken(masterAdminToken=masterAdminToken))
+        if a == True:
+            return {"status_code":200, 'body':"Deletion was a success."}
+        return {"status_code":401, 'body': 'Deletion was not successful. Check if token is correct.'}
+    except Exception as e:
+        return {'status_code': 500, 'body': repr(e)}
 
 if __name__ == "__main__":
     import uvicorn
