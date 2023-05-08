@@ -50,21 +50,70 @@ def loginAdmin(db: Session, admin: adminSchema.Administrator_LoginAccount_DB) ->
     db_information = db.query(Administrators_Table.username, Administrators_Table.password, Administrators_Table.admin_level).filter(Administrators_Table.username == admin.userName).first()
     if db_information is not None and __sc.validateUsername(admin.userName, db_information[0]) and __sc.validateHash(admin.passwd.get_secret_value(), str(db_information[1])):
         if( admin.token == None):
-            return [1, __sc.createToken({'username': admin.userName, 'admin_level':str(db_information[2])})]
+            return [201, __sc.createToken({'username': admin.userName, 'admin_level':str(db_information[2])})]
         elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [True, True]:
-            return [2, "Successful Authenticacion!"]
+            return [202, "Successful Authenticacion!"]
         elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [True, False]:
-            return [3, __sc.createToken({'username': admin.userName, 'admin_level':db_information[2]})]
+            return [201, __sc.createToken({'username': admin.userName, 'admin_level':db_information[2]})]
         elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [False, True]:
-            return [4, "Invalid Token"]
+            return [401, "Invalid Token"]
     else:
-        return [5, "Invalid Username or Password"]
+        return [401, "Invalid Username or Password"]
 
 def changeAdminPasswd(db: Session, admin: adminSchema.Administrator_ChangePasswd_DB):
-    tmp = db.query(Administrators_Table.username, Administrators_Table.password).filter(admin.userName == Administrators_Table.username, __sc.validateHash(admin.passwd.get_secret_value(), Administrators_Table.password)).first()
+    if admin.masterAdminLevel == None:
+        tmp = db.query(Administrators_Table.username, Administrators_Table.password).filter(admin.userName == Administrators_Table.username, __sc.validateHash(admin.passwd.get_secret_value(), Administrators_Table.password)).first()
+        if tmp is None:
+            return False
+        db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'password': __sc.encryptHash(admin.newPasswd.get_secret_value()), 'updated_at': admin.updatedAt})
+        db.commit()
+    else:
+        tmp = db.query(Administrators_Table.username, Administrators_Table.password).filter(admin.userName == Administrators_Table.username).first()
+        if tmp is None:
+            return False
+        db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'password': __sc.encryptHash(admin.newPasswd.get_secret_value()), 'updated_at': admin.updatedAt})
+        db.commit()
+    return True
+
+def changeAdminName(db: Session, admin: adminSchema.Administrator_ChangeName_DB):
+    tmp = db.query(Administrators_Table.name).filter(admin.userName == Administrators_Table.username).first()
     if tmp is None:
         return False
-    db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'password': __sc.encryptHash(admin.newPasswd.get_secret_value())})
+    db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({"name": admin.name, "update_at": admin.updatedAt})
     db.commit()
     return True
 
+def changeAdminEmail(db: Session, admin: adminSchema.Administrator_ChangeEmail_DB):
+    tmp = db.query(Administrators_Table.email).filter(admin.userName == Administrators_Table.username).first()
+    if tmp is None:
+        return False
+    db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({"email": admin.name, "update_at": admin.updatedAt})
+    db.commit()
+    return True
+
+def changeAdminAll(db: Session, admin: adminSchema.Administrator_ChangeAll_DB):
+    if admin.masterAdminLevel == "MA" and admin.masterAdminLevel != None:
+        tmp = db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).first()
+        if tmp is None:
+            return False
+        db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({"password": __sc.encryptHash(admin.newPasswd.get_secret_value()), "name": admin.newName, "email": admin.newEmail, "admin_level": admin.newLevel, "updated_at": admin.updatedAt})
+        db.commit()
+        return True
+    return False
+
+def deleteAdminEntry(db: Session, admin: adminSchema.Administrator_Delete_Entry_INPUTS):
+    print(admin.masterAdminLevel)
+    if admin.masterAdminLevel == "MA" and admin.masterAdminLevel != None:
+        if admin.state == "--i":
+            tmp = db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).first()
+            if tmp is None:
+                return False
+            db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).delete()
+            db.commit()
+            return True
+        elif admin.state == "--a":
+            db.query(Administrators_Table).delete()
+            db.commit()
+            return True
+        return False
+    return False
