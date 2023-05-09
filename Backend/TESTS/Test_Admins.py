@@ -12,11 +12,12 @@ __sc = sc()
 def getAdmins(db: Session, admin: adminSchema.Administrator_MasterAdminToken):
     tmp = db.query(Administrators_Table.username,Administrators_Table.admin_level).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
     if tmp is None:
-        return []
+        raise Exception("No data was found")
     if __sc.validateToken(tmp[0],tmp[1],admin.masterAdminToken) == [True, True] and tmp[1] == "MA":
         entries = db.query(Administrators_Table).all()
-        return [adminSchema.Administrator_GETTER(idAdministrators=entry.idadministrators,name=entry.name,userName=entry.username,password=entry.password,email=entry.email,adminLevel=entry.admin_level, createdAt=entry.created_at, updatedAt=entry.updated_at) for entry in entries]
-    return []
+        return [adminSchema.Administrator_GETTER(idAdministrators=entry.idadministrators,name=entry.name,userName=entry.username,password=entry.password,email=entry.email, phone=entry.phone,adminLevel=entry.admin_level, createdAt=entry.created_at, updatedAt=entry.updated_at) for entry in entries]
+    raise Exception("No data was found")
+
 def getAdminbyEmail(db: Session, email: str):
     return db.query(Administrators_Table).filter(Administrators_Table.email == email).first()
     
@@ -28,7 +29,7 @@ def createAdmin(db: Session, admin: adminSchema.Administrator_CreateAccount_DB):
     if tmp is None:
         return False
     if __sc.validateToken(tmp[0],tmp[1],admin.masterAdminToken) == [True, True] and tmp[1] == "MA":
-        dbAdmin = Administrators_Table(name=admin.name, email=admin.email, username=admin.userName, password=__sc.encryptHash(admin.passwd.get_secret_value()), admin_level=admin.adminLevel,created_at=admin.createdAt, updated_at=admin.updatedAt)
+        dbAdmin = Administrators_Table(name=admin.name, email=admin.email,phone=admin.phone, username=admin.userName, password=__sc.encryptHash(admin.passwd.get_secret_value()), admin_level=admin.adminLevel,created_at=admin.createdAt, updated_at=admin.updatedAt)
         db.add(dbAdmin)
         db.commit()
         db.refresh(dbAdmin)
@@ -36,7 +37,7 @@ def createAdmin(db: Session, admin: adminSchema.Administrator_CreateAccount_DB):
     return False
 
 def createMasterAdmin(db: Session, admin: adminSchema.Administrator_CreateAccount_DB):
-        dbAdmin = Administrators_Table(name=admin.name, email=admin.email, username=admin.userName, password=__sc.encryptHash(admin.passwd.get_secret_value()), admin_level=admin.adminLevel,created_at=admin.createdAt, updated_at=admin.updatedAt)
+        dbAdmin = Administrators_Table(name=admin.name, email=admin.email,phone=admin.phone, username=admin.userName, password=__sc.encryptHash(admin.passwd.get_secret_value()), admin_level=admin.adminLevel,created_at=admin.createdAt, updated_at=admin.updatedAt)
         db.add(dbAdmin)
         db.commit()
         db.refresh(dbAdmin)
@@ -67,7 +68,7 @@ def loginAdmin(db: Session, admin: adminSchema.Administrator_LoginAccount_DB) ->
         if( admin.token == None):
             return [201, __sc.createToken({'username': admin.userName, 'admin_level':str(db_information[2])})]
         elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [True, True]:
-            return [202, "Successful Authenticacion!"]
+            return [200, "Successful Authenticacion!"]
         elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [True, False]:
             return [201, __sc.createToken({'username': admin.userName, 'admin_level':db_information[2]})]
         elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [False, True]:
@@ -83,12 +84,20 @@ def changeAdminPasswdEmail(db: Session, admin: adminSchema.Administrator_ChangeP
         tmp = db.query(Administrators_Table.username, Administrators_Table.password, Administrators_Table.email).filter(admin.userName == Administrators_Table.username).first()
         if tmp is None:
             return False
-        if admin.newPasswd != None and admin.newEmail != None:
-            db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'password': __sc.encryptHash(admin.newPasswd.get_secret_value()), 'email':admin.newEmail, 'updated_at': admin.updatedAt})
-        elif admin.newPasswd != None and admin.newEmail == None:
-            db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'password': __sc.encryptHash(admin.newPasswd.get_secret_value()), 'updated_at': admin.updatedAt})
-        elif admin.newPasswd == None and admin.newEmail != None:
+        if admin.newPasswd != None and admin.newEmail != None and admin.newPhone != None:
+            db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'password': __sc.encryptHash(admin.newPasswd.get_secret_value()), 'email':admin.newEmail, 'updated_at': admin.updatedAt, "phone": admin.newPhone})
+        elif admin.newPasswd != None and admin.newPhone == None and admin.newEmail != None:
+            db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'password': __sc.encryptHash(admin.newPasswd.get_secret_value()), 'email':admin.newEmail,'updated_at': admin.updatedAt})
+        elif admin.newPasswd != None and admin.newPhone != None and admin.newEmail == None:
+            db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'password': __sc.encryptHash(admin.newPasswd.get_secret_value()), "phone": admin.newPhone, 'updated_at': admin.updatedAt})
+        elif admin.newPasswd == None and admin.newPhone != None and admin.newEmail != None:
+            db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'email':admin.newEmail, 'updated_at': admin.updatedAt, "phone": admin.newPhone})
+        elif admin.newPasswd != None and admin.newPhone == None and admin.newEmail != None:
+            db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'email':admin.newEmail, 'updated_at': admin.updatedAt, "password": __sc.encryptHash(admin.newPasswd.get_secret_value())})
+        elif admin.newPasswd == None and admin.newPhone == None and admin.newEmail != None:
             db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'email':admin.newEmail, 'updated_at': admin.updatedAt})
+        elif admin.newPasswd == None and admin.newPhone != None and admin.newEmail == None:
+            db.query(Administrators_Table).filter(admin.userName == Administrators_Table.username).update({'phone':admin.newPhone, 'updated_at': admin.updatedAt})
         else:
             return False
         db.commit()

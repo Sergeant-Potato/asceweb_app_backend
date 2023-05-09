@@ -11,8 +11,9 @@ class Administrators_Table(Base):
 
     name = Column(String(55), nullable=False)
     email = Column(String(100), unique=True, nullable=False)
+    phone = Column(String(15), unique=True, nullable=False)
     username = Column(String(45), unique=True, nullable=False)
-    password = Column(String(100), unique=True, nullable=False)
+    password = Column(String(100), nullable=False)
     admin_level = Column(Enum('MA','GA'), nullable=False)
     created_at = Column(DATETIME, nullable=False)
     updated_at = Column(DATETIME, nullable=False)

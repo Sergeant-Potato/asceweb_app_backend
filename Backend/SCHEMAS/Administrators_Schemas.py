@@ -66,6 +66,7 @@ class Administrator_CreateAccount_INPUTS(__Administrator_Basic_INPUTS):    #   A
     """SETTER para validar inputs y luego enviar a la base de datos"""
     name: str
     email: EmailStr
+    phone: str
     adminLevel: str
     createdAt: dt.datetime = dt.datetime.now()
     updatedAt: dt.datetime = dt.datetime.now()
@@ -76,10 +77,24 @@ class Administrator_CreateAccount_INPUTS(__Administrator_Basic_INPUTS):    #   A
     def isName(cls, value: str):
      if any(v[0].islower() for v in value.split()):
          raise ValueError("All parts of any name should contain upper - case characters.")
-     if any(v.isalpha() for v in value.split()) == False:
+     if any(not v.isalpha() and not v.isspace() for v in value):
          raise ValueError("A name only contains letters.")
      return value
     
+    @validator('email', allow_reuse=True)
+    def validate_email(cls, value: EmailStr):
+        email_domain = value.split('@')[1]
+        if email_domain.count('.com') > 1:
+            raise ValidationError("Invalid email")
+        return value
+    
+    @validator('phone', allow_reuse=True)
+    def validate_phone(cls, value: str):
+        phone_pattern = set('!@#$%^&*()_+-=`~<>,.?/:;"{}[]\'')
+        if any(char in phone_pattern for char in value):
+            raise ValidationError('Invalid phone number')
+        return "{}-{}-{}".format(value[:3],value[3:6],value[6:])
+
     @validator('adminLevel',allow_reuse=True)
     def isAdminLevel(cls, value: str):
 
@@ -101,6 +116,25 @@ class Administrator_LoginAccount_INPUTS(__Administrator_Basic_INPUTS):
     
     token: str = None
 
+    @validator('userName', allow_reuse=True)
+    def isUserName(cls, value: str):
+        if len(value) < 5:
+            raise ValueError("Invalid username or password")
+        if value.isalnum() == False:
+            raise ValueError("Invalid username or password")
+        if value.islower() or value.isupper():
+            raise ValueError("Invalid username or password")
+        return value
+
+    @validator('passwd', allow_reuse=True)
+    def isPasswd(cls, value: SecretStr):
+        if len(value) < 8:
+            raise ValueError("Invalid username or password")
+        if value.get_secret_value().islower() or value.get_secret_value().isupper():
+            raise ValueError("Invalid username or password")
+        if all(v.isalnum() or v in ('!', '@', '#', '$', '%', '&') for v in value.get_secret_value()) == False:
+            raise ValueError("Invalid username or password")
+        return value
     class Config:
         orm_mode = True
 
@@ -108,6 +142,7 @@ class Administrator_ChangePasswdEmail_INPUTS(Schema):
     userName: str
     newPasswd: SecretStr = None
     newEmail: EmailStr = None
+    newPhone: str = None
     updatedAt: dt.datetime = dt.datetime.now()
 
     masterAdminToken: str
@@ -133,6 +168,12 @@ class Administrator_ChangePasswdEmail_INPUTS(Schema):
                 raise ValueError("A New Password must have numbers, letters and symbols.")
         return value
     
+    @validator('newPhone', allow_reuse=True)
+    def validate_phone(cls, value: str):
+        phone_pattern = set('!@#$%^&*()_+-=`~<>,.?/:;"{}[]\'')
+        if any(char in phone_pattern for char in value):
+            raise ValidationError('Invalid phone number')
+        return "{}-{}-{}".format(value[:3],value[3:6],value[6:])
     class Config:
         orm_mode = True
 
@@ -259,6 +300,7 @@ class Administrator_CreateAccount_DB(Schema):
     passwd: SecretStr
     name: str
     email: EmailStr
+    phone: str
     adminLevel: str
     createdAt: dt.datetime
     updatedAt: dt.datetime
@@ -278,6 +320,7 @@ class Administrator_GETTER(Schema):
     password: str
     name: str
     email: EmailStr
+    phone: str
     adminLevel: str
     createdAt: dt.datetime
     updatedAt: dt.datetime
@@ -298,6 +341,7 @@ class Administrator_ChangePasswdEmail_DB(Schema):
     userName: str
     newPasswd: SecretStr
     newEmail: EmailStr
+    newPhone: str
     updatedAt: dt.datetime
 
     masterAdminToken: str
@@ -338,6 +382,14 @@ class Administrator_ChangePasswdEmail_DB(Schema):
 
 #     class Config:
 #         orm_mode = True
+
+
+class Output_return(Schema):
+    status_code: Any
+    body: Any
+
+    class Config:
+        orm_mode = True
 
 class Administrator_Validate_User(Schema):
     """Schema to send a dictionary when validating a user in login"""
