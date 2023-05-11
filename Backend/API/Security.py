@@ -53,7 +53,6 @@ class Secuirity:
             'exp_date': self.__getTimeNow().timestamp(),
             'level': data['admin_level']
         }
-        #print(self.__SECRET_ENV_KEY)
         return jwt.encode(token_payload,self.__SECRET_ENV_KEY, algorithm="HS256")
 
     def decodeToken(self,token: str):
