@@ -1,7 +1,7 @@
-from pydantic import BaseModel as Schema, ValidationError, validator, root_validator, EmailStr, SecretStr
+from pydantic import BaseModel as Schema,validator, root_validator, EmailStr, SecretStr
 import datetime as dt
 from typing import Any
-
+import re 
 
 '''
     ----------------------------------------------------------------
@@ -33,13 +33,15 @@ class __Administrator_Basic_INPUTS(Schema):
         val2 = values.get("passwd")
 
         if val1 == val2:
-            raise ValueError("The User Name and passwdord cannot be the same.")
+            raise ValueError("The User Name and password cannot be the same.")
         return values
     
     @validator('userName', allow_reuse=True)
     def isUserName(cls, value: str):
         if len(value) < 5:
             raise ValueError("The User Name must have more than four (4) characters.")
+        if value[0].isspace() or value[-1].isspace():
+         raise ValueError("No spaces allowed at the beginning or end of username")
         if value.isalnum() == False:
             raise ValueError("An User Name must contain alphabetic and numeric characters.")
         if value.islower() or value.isupper():
@@ -74,6 +76,10 @@ class Administrator_CreateAccount_INPUTS(__Administrator_Basic_INPUTS):    #   A
 
     @validator('name', allow_reuse=True)
     def isName(cls, value: str):
+     if len(value.split()) != 2:
+         raise ValueError("Name must contain only one firstname and one lastname")
+     if value[0].isspace() or value[-1].isspace():
+         raise ValueError("No spaces allowed at the beginning or end of name")
      if any(v[0].islower() for v in value.split()):
          raise ValueError("All parts of any name should contain upper - case characters.")
      if any(not v.isalpha() and not v.isspace() for v in value):
@@ -82,24 +88,25 @@ class Administrator_CreateAccount_INPUTS(__Administrator_Basic_INPUTS):    #   A
     
     @validator('email', allow_reuse=True)
     def validate_email(cls, value: EmailStr):
+        if value.lower() != value:
+            raise ValueError("The email must be in lower - case.")
         email_domain = value.split('@')[1]
         if email_domain.count('.com') > 1:
-            raise ValidationError("Invalid email")
+            raise ValueError("Invalid email")
         return value
     
     @validator('phone', allow_reuse=True)
     def validate_phone(cls, value: str):
         if not value.isdigit() or len(value) != 10:
-            raise ValidationError('Invalid phone number')
+            raise ValueError('Invalid Phone number')
         return "{}-{}-{}".format(value[:3],value[3:6],value[6:])
 
     @validator('adminLevel',allow_reuse=True)
     def isAdminLevel(cls, value: str):
-
-        if (len(value) <= 0 or len(value) > 2):
-            raise ValueError("The admin levels value must have two (2) characters at all times.")
+        if len(value) != 2:
+            raise ValueError("Invalid Admin levels")
         if not(value == "MA" or value == "GA"):
-            raise ValueError("The admin level value does not have any of the accepted values.")
+            raise ValueError("Invalid Admin levels")
         return value
     
     class Config:
@@ -139,53 +146,83 @@ class Administrator_LoginAccount_INPUTS(__Administrator_Basic_INPUTS):
 class Administrator_ChangePasswdEmail_INPUTS(Schema):
     userName: str
     newPasswd: SecretStr = None
-    newEmail: EmailStr = None
+    newEmail: str = None
     newPhone: str = None
+    newLevel: str = None
     updatedAt: dt.datetime = dt.datetime.now()
 
     masterAdminToken: str
     
-    @validator('userName', allow_reuse=True)
-    def isUserName(cls, value: str):
-        if len(value) < 5:
-            raise ValueError("The User Name must have more than four (4) characters.")
-        if value.isalnum() == False:
-            raise ValueError("An User Name must contain alphabetic and numeric characters.")
-        if value.islower() or value.isupper():
-            raise ValueError("A User Name must have both upper - case and lower - case characters.")
-        return value
-    
     @validator('newPasswd', allow_reuse=True)
     def isPasswd(cls, value: SecretStr):
         if value != None:
+            if " " in value.get_secret_value():
+                raise ValueError("Password must not contain spaces.")
             if len(value) < 8:
-                raise ValueError("The New Password must have at least eight (8) characters.")
-            if value.get_secret_value().islower() or value.get_secret_value().isupper():
-                raise ValueError("A New Password must have both upper - case and lower - case characters.")
-            if all(v.isalnum() or v in ('!', '@', '#', '$', '%', '&') for v in value.get_secret_value()) == False:
-                raise ValueError("A New Password must have numbers, letters and symbols.")
+                raise ValueError("Password must have at least eight (8) characters.")
+            if not any(char.isupper() for char in value.get_secret_value()):
+                raise ValueError("Password must contain at least one uppercase letter.")
+            if not any(char.islower() for char in value.get_secret_value()):
+                raise ValueError("Password must contain at least one lowercase letter.")
+            if not any(char.isdigit() for char in value.get_secret_value()):
+                raise ValueError("Password must contain at least one number.")
+            if not any(char in ('!', '@', '#', '$', '%', '&') for char in value.get_secret_value()):
+                raise ValueError("Password must contain at least one special character.")
         return value
     
     @validator('newPhone', allow_reuse=True)
     def validate_phone(cls, value: str):
-        phone_pattern = set('!@#$%^&*()_+-=`~<>,.?/:;"{}[]\'')
-        if any(char in phone_pattern for char in value):
-            raise ValidationError('Invalid phone number')
-        return "{}-{}-{}".format(value[:3],value[3:6],value[6:])
+        if value:
+            if len(value) != 10:
+                raise ValueError('Invalid Phone number')
+            else:
+                if not value.isdigit():
+                    raise ValueError('Invalid Phone number')
+                return "{}-{}-{}".format(value[:3],value[3:6],value[6:])
+        return value
+    
+    @validator('newLevel',allow_reuse=True)
+    def isAdminLevel(cls, value: str):
+        if value:
+            if len(value) != 2:
+                raise ValueError("Invalid Admin levels")
+            if not value in ('MA', 'GA'):
+                raise ValueError("Invalid Admin levels")
+            return value
+        return value
+    
+
+    @validator('newEmail', allow_reuse=True)
+    def validate_email(cls, value: str):
+        if value:
+            if " " in value:
+                raise ValueError("No spaces allowed on email")
+            if not re.match(r"[^@]+@[^@]+\.[^@]+", value):
+                raise ValueError("Invalid email")
+            if value.lower() != value:
+                raise ValueError("The email must be in lower - case.")
+            email_domain = value.split('@')[1]
+            if email_domain.count('.com') > 1:
+                raise ValueError("Invalid email")
+            return value
+        return value
+
     class Config:
         orm_mode = True
 
 
 
 class Member_upate_table(Schema):
-    name: str 
-    email: EmailStr = None
-    phone: str = None
-    tshirt_size: str = None
-    age: int = None
-    bachelor: str = None
-    department: str = None
-    aca_years: int = None
+    email: str
+    newEmail: str = None
+    newPhone: str = None
+    newTshirt_size: str = None
+    newAge: int = None
+    newBachelor: str = None
+    newDepartment: str = None
+    newAca_years: int = None
+    newMembership: str = None
+
     masterAdminToken: str
 
     @validator('*', allow_reuse=True, pre=True)
@@ -194,148 +231,182 @@ class Member_upate_table(Schema):
             raise ValueError("None of the Fields can be empty!")
         return value
     
-    @validator('name', allow_reuse=True)
-    def isName(cls, value: str):
-     if any(v[0].islower() for v in value.split()):
-         raise ValueError("Uppercase letter must be in name")
-     if any(not v.isalpha() and not v.isspace() for v in value):
-         raise ValueError("A name only contains letters.")
-     return value
-    
     @validator('email', allow_reuse=True)
-    def validate_email(cls, value: EmailStr):
-        email_domain = value.split('@')[1]
-        if email_domain not in ('pupr.edu', 'students.pupr.edu'):
-            raise ValidationError("Invalid email")
+    def validate_email(cls, value: str):
+        if value:
+            if " " in value:
+                raise ValueError("No spaces allowed at the beginning or end of email")
+            if not re.match(r"[^@]+@[^@]+\.[^@]+", value):
+                    raise ValueError("Invalid email")
+            if value.lower() != value:
+                raise ValueError("The email must be in lower - case.")
+            email_domain = value.split('@')[1]
+            if email_domain not in ('pupr.edu', 'students.pupr.edu'):
+                raise ValueError("Invalid email")
+            return value
         return value
     
-    @validator('age', allow_reuse=True)
-    def validate_age(cls, value:int):
-        if value < 15:
-            raise ValidationError('Age should be greater than 15')
-        elif value > 150:
-            raise ValidationError('Age should be less than 150')
+    @validator('newEmail', allow_reuse=True)
+    def validate_email(cls, value: str):
+        if value:
+            if " " in value:
+                raise ValueError("No spaces allowed at the beginning or end of email")
+            if not re.match(r"[^@]+@[^@]+\.[^@]+", value):
+                    raise ValueError("Invalid email")
+            if value.lower() != value:
+                raise ValueError("The email must be in lower - case.")
+            email_domain = value.split('@')[1]
+            if email_domain not in ('pupr.edu', 'students.pupr.edu'):
+                raise ValueError("Invalid email")
+            return value
         return value
     
-    @validator('phone', allow_reuse=True)
+    @validator('newPhone', allow_reuse=True)
     def validate_phone(cls, value: str):
-        if len(value) > 10 or len(value) < 10:
-            raise ValueError('Not a phone number')
-        else:
-            phone_pattern = set('!@#$%^&*()_+-=`~<>,.?/:;"{}[]\'')
-            if any(char in phone_pattern for char in value):
-                raise ValidationError('Invalid phone number')
-            return "{}-{}-{}".format(value[:3],value[3:6],value[6:])
-    
-    @validator('tshirt_size', allow_reuse=True)
-    def validate_tshirt(cls, value: str):
-        if value not in ('XS', 'S', 'M', 'L', 'XL', 'XXL'):
-            raise ValidationError('Invalid tshirt size')
-        else:
-            return value
+        if value:
+            if len(value) != 10:
+                raise ValueError('Invalid Phone number')
+            else:
+                if not value.isdigit():
+                    raise ValueError('Invalid Phone number')
+                return "{}-{}-{}".format(value[:3],value[3:6],value[6:])
+        return value
 
-    @validator('bachelor', allow_reuse=True)
+    @validator('newAge', allow_reuse=True)
+    def validate_age(cls, value:int):
+        if value:
+            if value < 15:
+                raise ValueError('Age should be greater than 15')
+            elif value > 150:
+                raise ValueError('Age should be less than 150')
+            return value
+        return value
+    
+    @validator('newTshirt_size', allow_reuse=True)
+    def validate_tshirt(cls, value: str):
+        if value:
+            if value not in ('XS', 'S', 'M', 'L', 'XL', 'XXL'):
+                raise ValueError('Invalid tshirt size')
+            else:
+                return value
+        return value
+
+    @validator('newBachelor', allow_reuse=True,check_fields=False)
     def validate_bachelor(cls, value: str):
-        print(value)
-        if any(not v.isalpha() for v in value):
-            raise ValidationError("Invalid bachelors name")
-        else:
+        if value:
+            if value[0].isspace() or value[-1].isspace():
+                raise ValueError("No spaces allowed at the beginning or end of bachelor")
+            if any(not v.isalpha() and not v.isspace() for v in value):
+                raise ValueError("A bachelor only contains letters.")
+            
             return value
+        return value
         
-    @validator('department', allow_reuse=True)
+    @validator('newDepartment', allow_reuse=True,check_fields=False)
     def validate_department(cls, value: str):
-        if any(not v.isalpha() for v in value):
-            raise ValidationError("Invalid department name")
-        else:
+        if value:
+            if value[0].isspace() or value[-1].isspace():
+                raise ValueError("No spaces allowed at the beginning or end of department")
+            if any(not v.isalpha() and not v.isspace() for v in value):
+                raise ValueError("A department only contains letters.")
+            
             return value
+        return value
+   
+    @validator('newMembership',allow_reuse=True)
+    def validate_membership(cls,value:str):
+        if value:
+            if " " in value:
+                raise ValueError("Space is not allowed in membership input")
+            if value not in ('Yes','No'):
+                raise ValueError("Invalid membership input")
+            return value
+        return value
     class Config:
         orm_mode = True
 
+class Competitions_upate_table(Schema):
+    email: str
+    newEmail: str = None
+    newPhone: str = None
+    newAscemember: str = None
+    newAscememberhip: str = None
+    newCompetition_name: str = None
+    newCourses: str = None
+    newDaily_availability: str = None
+    newTravel_availability: str = None
+    newOlder_than_twentyfive: str = None
+    newHeavy_driver: str = None
+    newOfficial_driver: str = None
+    newTravel_june: str = None
+    newCompetitions_form: str = None
+    newExperiences: str = None
 
-# class Administrator_ChangeName_INPUTS(Schema):
-#     userName: str
-#     newName: str
-#     updatedAt: dt.datetime = dt.datetime.now()
+    masterAdminToken: str
+    @validator('*', allow_reuse=True, pre=True)
+    def isEmpty(cls, value: str | dt.datetime):
+        if type(value) is str and (value == "" or value == None):
+            raise ValueError("None of the Fields can be empty!")
+        return value
 
-#     masterAdminToken: str = None
-
-#     @validator('*', allow_reuse=True, pre=True)
-#     def isEmpty(cls, value: str | dt.datetime):
-#         if type(value) is str and (value == "" or value == None):
-#             raise ValueError("None of the Fields can be empty!")
-#         return value
+    @validator('newEmail', allow_reuse=True)
+    def validate_email(cls, value: str):
+        if value:
+            if " " in value:
+                raise ValueError("No spaces allowed on email")
+            if value.lower() != value:
+                raise ValueError("The email must be in lower - case.")
+            email_domain = value.split('@')[1]
+            if email_domain != 'students.pupr.edu':
+                raise ValueError("Invalid email")
+            return value
+        return value
     
-#     @validator('userName', allow_reuse=True)
-#     def isUserName(cls, value: str):
-#         if len(value) < 5:
-#             raise ValueError("The User Name must have more than four (4) characters.")
-#         if value.isalnum() == False:
-#             raise ValueError("An User Name must contain alphabetic and numeric characters.")
-#         if value.islower() or value.isupper():
-#             raise ValueError("A User Name must have both upper - case and lower - case characters.")
-#         return value
+    @validator('newPhone', allow_reuse=True)
+    def validate_phone(cls, value: str):
+        if value:
+            if " " in value:
+                raise ValueError("No spaces allowed on phone")
+            if len(value) > 10 or len(value) < 10:
+                raise ValueError('Not a phone number')
+            else:
+                phone_pattern = set('!@#$%^&*()_+-=`~<>,.?/:;"{}[]\'')
+                if any(char in phone_pattern for char in value):
+                    raise ValueError('Invalid phone number')
+                return "{}-{}-{}".format(value[:3],value[3:6],value[6:])
+        return value
+        
     
-#     @validator('newName', allow_reuse=True)
-#     def isName(cls, value: str):
-#      if any(v[0].islower() for v in value.split()):
-#          raise ValueError("All parts of any name should contain upper - case characters.")
-#      if any(v.isalpha() for v in value.split()) == False:
-#          raise ValueError("A name only contains letters.")
-#      return value
+    @validator('newCompetition_name: str', allow_reuse=True,check_fields=False)
+    def validate_competition(cls, value: str):
+        if value:
+            if value[0].isspace() or value[-1].isspace():
+                raise ValueError("No spaces allowed on competitions name")
+            if any(not v.isalpha() for v in value):
+                raise ValueError("Invalid department name")
+            else:
+                return value
+        return value
+        
+    @validator('newHeavy_driver', allow_reuse=True)
+    def validate_heavy_duty(cls, value: str):
+        if value:
+            if value not in ('Yes', 'No'):
+                raise ValueError('Invalid answer')
+            else:
+                return value
+        return value
 
-#     class Config:
-#         orm_mode = True
-
-# class Administrator_ChangeEmail_INPUTS(Schema):
-#     userName: str
-#     newEmail: EmailStr
-#     updatedAt: dt.datetime = dt.datetime.now()
-
-#     masterAdminToken: str = None
-
-#     @validator('*', allow_reuse=True, pre=True)
-#     def isEmpty(cls, value: str | dt.datetime):
-#         if type(value) is str and (value == "" or value == None):
-#             raise ValueError("None of the Fields can be empty!")
-#         return value
-    
-#     @validator('userName', allow_reuse=True)
-#     def isUserName(cls, value: str):
-#         if len(value) < 5:
-#             raise ValueError("The User Name must have more than four (4) characters.")
-#         if value.isalnum() == False:
-#             raise ValueError("An User Name must contain alphabetic and numeric characters.")
-#         if value.islower() or value.isupper():
-#             raise ValueError("A User Name must have both upper - case and lower - case characters.")
-#         return value    
-#     class Config:
-#         orm_mode: True
-    
-
-
-# class Administrator_ChangeAll_INPUTS(Administrator_ChangePasswdEmail_INPUTS):
-#     newName: str
-#     newEmail: EmailStr
-#     newLevel: str
-
-#     @validator('newName', allow_reuse=True)
-#     def isName(cls, value: str):
-#      if any(v[0].islower() for v in value.split()):
-#          raise ValueError("All parts of any name should contain upper - case characters.")
-#      if any(v.isalpha() for v in value.split()) == False:
-#          raise ValueError("A name only contains letters.")
-#      return value
-    
-#     @validator('newLevel', allow_reuse=True)
-#     def isAdminLevel(cls, value: str):
-#         if len(value) <= 0 or len(value) > 2:
-#             raise ValueError("The admin level value must have two (2) characters at all times.")
-#         if not(value == "MA" or value == "GA"):
-#             raise ValueError("The admin level value does not have any of the accepted values.")
-#         return value
-#     class Config:
-#         orm_mode: True
-
+    @validator('newOfficial_driver', allow_reuse=True)
+    def validate_offdriver(cls, value: str):
+        if value:
+            if value not in ('Yes', 'No'):
+                raise ValueError('Invalid answer')
+            else:
+                return value
+        return value
+    class Config:
+        orm_mode = True
 
 class Administrator_Delete_Entry_INPUTS(Schema):
     masterAdminToken: str
@@ -412,9 +483,9 @@ class Administrator_LoginAccount_DB(Schema):
 
 class Administrator_ChangePasswdEmail_DB(Schema):
     userName: str
-    newPasswd: SecretStr
-    newEmail: EmailStr
-    newPhone: str
+    newPasswd: SecretStr = None
+    newEmail: EmailStr = None
+    newPhone: str = None
     updatedAt: dt.datetime
 
     masterAdminToken: str
@@ -460,6 +531,7 @@ class Administrator_ChangePasswdEmail_DB(Schema):
 
 class get_SignUp_Data(Schema):
     """Getter to be used to return signup data from database"""
+    idchapter_members: str
     name: str
     email: EmailStr
     phone: str
@@ -471,6 +543,33 @@ class get_SignUp_Data(Schema):
     created_at: dt.datetime
     competitions_form: str
     aca_years: int
+    membership_paid: str
+    membership_until: str
+
+
+    class Config:
+            orm_mode = True
+
+
+class get_Competitions_Data(Schema):
+    """Getter to be used to return signup data from database"""
+    idchapter_members: int
+    name: str
+    email: EmailStr
+    phone: str
+    ascemembership: str
+    competition_name: str
+    courses: str
+    daily_availability: str
+    travel_availability: str
+    older_than_twentyfive: str
+    heavy_driver: str
+    official_driver: str
+    created_at: dt.datetime
+    competitions_form: str 
+    travel_june: str
+    experiences: str
+    asce_member: str
 
     class Config:
             orm_mode = True
@@ -499,5 +598,5 @@ if __name__ == "__main__":
         admin1 = Administrator_CreateAccount_INPUTS(userName="Pepe112", passwd="Every#one313", name="Pepe The Frog", email="pepe@gmail.com", adminLevel="GA")
         admin2 = Administrator_CreateAccount_INPUTS(userName="Pepe221", passwd="12pPpppppppp", name=" ", email="datapp.com", adminLevel="LA")
         #   looking = Administrator_LookAccount(idAdministrators=-1)
-    except ValidationError as e:
+    except ValueError as e:
         print(e)
