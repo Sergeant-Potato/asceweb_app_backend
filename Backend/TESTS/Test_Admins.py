@@ -19,35 +19,35 @@ def ValidateExist(db:Session,table: str, user: Union[adminSchema.Administrator_L
         db_profile = db.query(Administrators_Table).filter(or_(Administrators_Table.email == user.email,Administrators_Table.username == user.userName,Administrators_Table.phone == user.phone)).first()
         if db_profile:
             if db_profile.username == user.userName:
-                raise HTTPException(status_code=422, detail='Username already exist')
+                raise HTTPException(status_code=409, detail='Username already exist')
             if db_profile.email == user.email:
-                raise HTTPException(status_code=422, detail='Email already exist')
+                raise HTTPException(status_code=409, detail='Email already exist')
             if db_profile.phone == user.phone:
-                raise  HTTPException(status_code=422, detail='Phone already exist')
+                raise  HTTPException(status_code=409, detail='Phone already exist')
         return False
     elif table == "UpdateAdmin":
         db_profile = db.query(Administrators_Table).filter(or_(Administrators_Table.email == user.newEmail,Administrators_Table.username == user.userName,Administrators_Table.phone == user.newPhone)).first()
         if db_profile:
             if db_profile.email == user.newEmail:
-                raise HTTPException(status_code=422, detail='Email already exist')
+                raise HTTPException(status_code=409, detail='Email already exist')
             if db_profile.phone == user.newPhone:
-                raise  HTTPException(status_code=422, detail='Phone already exist')
+                raise  HTTPException(status_code=409, detail='Phone already exist')
         return False
     elif table == "UpdateChapterMember":
         db_profile = db.query(Chapter_Members_Table).filter(or_(Chapter_Members_Table.email == user.email)).first()
         if db_profile:
             if db_profile.email == user.newEmail:
-                raise HTTPException(status_code=422, detail='Email already exist')
+                raise HTTPException(status_code=409, detail='Email already exist')
             if db_profile.phone == user.newPhone:
-                raise  HTTPException(status_code=422, detail='Phone already exist')
+                raise  HTTPException(status_code=409, detail='Phone already exist')
         return False
     elif table == "UpdateCompetitionsSignUp":
         db_profile = db.query(Competitions_Table).filter(or_(Competitions_Table.email == user.email)).first()
         if db_profile:
             if db_profile.email == user.newEmail:
-                raise HTTPException(status_code=422, detail='Email already exist')
+                raise HTTPException(status_code=409, detail='Email already exist')
             if db_profile.phone == user.newPhone:
-                raise  HTTPException(status_code=422, detail='Phone already exist')
+                raise  HTTPException(status_code=409, detail='Phone already exist')
         return False
     raise Exception("Table {} does not exist".format(table))
 
@@ -72,17 +72,13 @@ def createAdmin(db:Session, admin: adminSchema.Administrator_CreateAccount_DB):
 def loginAdmin(db: Session, admin: adminSchema.Administrator_LoginAccount_DB) -> list:
     """Validate username and password as well as token to return either an invalid login or valid login"""
     db_information = db.query(Administrators_Table.username, Administrators_Table.password, Administrators_Table.admin_level).filter(Administrators_Table.username == admin.userName).first()
-    if db_information is not None and __sc.validateUsername(admin.userName, db_information[0]) and __sc.validateHash(admin.passwd.get_secret_value(), str(db_information[1])):
-        if( admin.token == None):
-            return [201, __sc.createToken({'username': admin.userName, 'admin_level':str(db_information[2])}), admin.userName]
-        elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [True, True]:
-            return [200, "Successful Authenticacion!", admin.userName]
-        elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [True, False]:
-            return [201, __sc.createToken({'username': admin.userName, 'admin_level':db_information[2]}), admin.userName]
-        elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [False, True]:
-            return [401, "Unauthorized", ""]
-    else:
-        return [401, "Invalid Username or Password", ""]
+    if db_information:
+        if __sc.validateUsername(admin.userName, db_information[0]) and __sc.validateHash(admin.passwd.get_secret_value(), str(db_information[1])):
+            data = __sc.createToken({'username':admin.userName,'admin_level':db_information[2]})
+            return data
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    raise HTTPException(status_code=404, detail="No username found")
+    
 
 
 
@@ -131,13 +127,11 @@ def delete_all_Members(db:Session, admin: adminSchema.Administrator_Delete_Entry
                 comp_member = db.query(Competitions_Table).filter(Competitions_Table.email == admin.email).delete()
                 user_member.competitions_form = "No"
                 user_member = db.query(Chapter_Members_Table).filter(Chapter_Members_Table.email == admin.email).delete()
-                if comp_member or user_member:
-                    db.commit()
-                    return "Table was deleted"
-                raise Exception("User was not found!")
-        else:
-            raise Exception("Invalid Administrator")
-    raise Exception("No data was deleted")
+                db.commit()
+                return "Table was deleted"
+            raise HTTPException(status_code=404, detail="No user found")
+        raise HTTPException(status_code=401, detail="Invalid Administrator")
+    raise HTTPException(status_code=404, detail="Administrator not found found")
 
 def delete_all_competitionsMember(db:Session, admin: adminSchema.Administrator_Delete_Entry_INPUTS):
     tmp = db.query(Administrators_Table.username, Administrators_Table.admin_level, Administrators_Table.email).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
@@ -149,37 +143,25 @@ def delete_all_competitionsMember(db:Session, admin: adminSchema.Administrator_D
                 user_member.competitions_form = 'No'
                 if(bool(db.query(Competitions_Table).filter(Competitions_Table.email == admin.email).delete())):
                     db.commit()
-                    #db.refresh(competitions_user)
-                    #db.refresh(user_member)
                     return "User was deleted"
-                raise Exception("User was not found!")
-        raise Exception("Invalid Administrator")
-    raise Exception("No data was deleted")
+                raise HTTPException(status_code=404, detail="No user found")
+        raise HTTPException(status_code=401, detail="Invalid Administrator")
+    raise HTTPException(status_code=404, detail="Administrator not found found")
 
 def deleteAdminEntry(db: Session, admin: adminSchema.Administrator_Delete_Entry_INPUTS):
-    tmp = db.query(Administrators_Table.username,Administrators_Table.admin_level, Administrators_Table.email).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
-    if tmp is None:
-        return False
-    
-    if __sc.validateToken(tmp[0], tmp[1], admin.masterAdminToken) == [True, True] and tmp[1] == "MA" and tmp[2] != admin.email:
-        tmp = db.query(Administrators_Table).filter(admin.email == Administrators_Table.email).first()
-        if tmp is None:
-            return False
-        db.query(Administrators_Table).filter(admin.email == Administrators_Table.email).delete()
-        db.commit()
-        return True
-    return False
-
-# def delete_all_Members(db:Session, admin: adminSchema.Administrator_Delete_Entry_INPUTS):
-#     tmp = db.query(Administrators_Table.username, Administrators_Table.admin_level, Administrators_Table.email).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
-#     if tmp:
-#         if __sc.validateToken(tmp[0],tmp[1],admin.masterAdminToken) == [True, True] and tmp[1] == "MA" and tmp[2] == admin.email:
-#             db.query(Administrators_Table).delete()
-#             db.commit()
-#             return "Table was deleted"
-#         raise Exception("Invalid Administrator")
-#     raise Exception("No data was deleted")
-
+    if ValidateExist(db=db,user=admin):
+        tmp = db.query(Administrators_Table.username,Administrators_Table.admin_level, Administrators_Table.email).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
+        if tmp:
+            if __sc.validateToken(tmp[0], tmp[1], admin.masterAdminToken) == [True, True] and tmp[1] == "MA" and tmp[2] != admin.email:
+                tmp = db.query(Administrators_Table).filter(admin.email == Administrators_Table.email).first()
+                if tmp is None:
+                    raise HTTPException(status_code=404, detail="No user found")
+                db.query(Administrators_Table).filter(admin.email == Administrators_Table.email).delete()
+                db.commit()
+                return True
+            raise HTTPException(status_code=401, detail="Invalid Administrator")
+        raise HTTPException(status_code=404, detail="Administrator not found found")
+    raise HTTPException(status_code=204, detail="No data was changed")
 
 
 def updateAdmin(db: Session, admin: adminSchema.Administrator_ChangePasswdEmail_DB):
@@ -325,19 +307,6 @@ def updateCompetitionsMembers(db: Session, user=adminSchema.Competitions_upate_t
     raise Exception("Something went wrong") #goes directly to internal server error exception
 
 
-"""
-email
-phone
-tshirt_size
-age
-bachelor
-department
-aca_years
-membership_paid
-"""
-
-
-
 def updateMembers(db: Session, user=adminSchema.Member_upate_table):
     """Email, phone and id are unique"""
     if not ValidateExist(db=db,table="UpdateChapterMember", user=user):
@@ -398,4 +367,4 @@ def updateMembers(db: Session, user=adminSchema.Member_upate_table):
 def isTokenValid(db: Session, admin=adminSchema.Administrator_MasterAdminToken):
     tokenDict = __sc.decodeToken(admin.masterAdminToken)
     validationState = __sc.validateToken(tokenDict["username"], tokenDict["level"], admin.masterAdminToken)
-    return validationState
+    return validationState == [True,True]

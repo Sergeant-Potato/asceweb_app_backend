@@ -119,7 +119,7 @@ class Administrator_CreateAccount_INPUTS(__Administrator_Basic_INPUTS):    #   A
 '''
 class Administrator_LoginAccount_INPUTS(__Administrator_Basic_INPUTS):
     
-    token: str = None
+    # token: str = None
 
     @validator('userName', allow_reuse=True)
     def isUserName(cls, value: str):
