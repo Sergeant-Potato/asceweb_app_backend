@@ -327,6 +327,7 @@ class Member_upate_table(Schema):
 
 class Competitions_upate_table(Schema):
     email: str
+    newName: str = None
     newEmail: str = None
     newPhone: str = None
     newAscemember: str = None

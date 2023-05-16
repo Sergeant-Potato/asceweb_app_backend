@@ -74,15 +74,15 @@ def loginAdmin(db: Session, admin: adminSchema.Administrator_LoginAccount_DB) ->
     db_information = db.query(Administrators_Table.username, Administrators_Table.password, Administrators_Table.admin_level).filter(Administrators_Table.username == admin.userName).first()
     if db_information is not None and __sc.validateUsername(admin.userName, db_information[0]) and __sc.validateHash(admin.passwd.get_secret_value(), str(db_information[1])):
         if( admin.token == None):
-            return [201, __sc.createToken({'username': admin.userName, 'admin_level':str(db_information[2])})]
+            return [201, __sc.createToken({'username': admin.userName, 'admin_level':str(db_information[2])}), admin.userName]
         elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [True, True]:
-            return [200, "Successful Authenticacion!"]
+            return [200, "Successful Authenticacion!", admin.userName]
         elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [True, False]:
-            return [201, __sc.createToken({'username': admin.userName, 'admin_level':db_information[2]})]
+            return [201, __sc.createToken({'username': admin.userName, 'admin_level':db_information[2]}), admin.userName]
         elif admin.token and __sc.validateToken(admin.userName,db_information[2],admin.token) == [False, True]:
-            return [401, "Unauthorized"]
+            return [401, "Unauthorized", ""]
     else:
-        return [401, "Invalid Username or Password"]
+        return [401, "Invalid Username or Password", ""]
 
 
 
@@ -125,10 +125,16 @@ def get_Competitions_Table(db: Session, admin: adminSchema.Administrator_MasterA
 def delete_all_Members(db:Session, admin: adminSchema.Administrator_Delete_Entry_INPUTS):
     tmp = db.query(Administrators_Table.username, Administrators_Table.admin_level, Administrators_Table.email).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
     if tmp:
-        if __sc.validateToken(tmp[0],tmp[1],admin.masterAdminToken) == [True, True] and tmp[1] == "MA" and tmp[2] == admin.email:
-            db.query(Chapter_Members_Table).delete()
-            db.commit()
-            return "Table was deleted"
+        if __sc.validateToken(tmp[0],tmp[1],admin.masterAdminToken) == [True, True] and tmp[1] == "MA":
+            user_member = db.query(Chapter_Members_Table).filter(Chapter_Members_Table.email == admin.email).first()
+            if user_member:
+                comp_member = db.query(Competitions_Table).filter(Competitions_Table.email == admin.email).delete()
+                user_member.competitions_form = "No"
+                user_member = db.query(Chapter_Members_Table).filter(Chapter_Members_Table.email == admin.email).delete()
+                if comp_member or user_member:
+                    db.commit()
+                    return "Table was deleted"
+                raise Exception("User was not found!")
         else:
             raise Exception("Invalid Administrator")
     raise Exception("No data was deleted")
@@ -138,13 +144,15 @@ def delete_all_competitionsMember(db:Session, admin: adminSchema.Administrator_D
     if tmp:
         if __sc.validateToken(tmp[0],tmp[1],admin.masterAdminToken) == [True, True] and tmp[1] == "MA" and tmp[2] != admin.email:
             user_member = db.query(Chapter_Members_Table).filter(Chapter_Members_Table.email == admin.email).first()
+            
             if user_member:
-                # user_member.competitions_form = 'No'
-                competitions_user= db.query(Competitions_Table).filter(Competitions_Table.email == admin.email).delete()
-                db.commit()
-                db.refresh(competitions_user)
-                # db.refresh(user_member)
-                return "User was deleted"
+                user_member.competitions_form = 'No'
+                if(bool(db.query(Competitions_Table).filter(Competitions_Table.email == admin.email).delete())):
+                    db.commit()
+                    #db.refresh(competitions_user)
+                    #db.refresh(user_member)
+                    return "User was deleted"
+                raise Exception("User was not found!")
         raise Exception("Invalid Administrator")
     raise Exception("No data was deleted")
 
@@ -162,15 +170,15 @@ def deleteAdminEntry(db: Session, admin: adminSchema.Administrator_Delete_Entry_
         return True
     return False
 
-def delete_all_Members(db:Session, admin: adminSchema.Administrator_Delete_Entry_INPUTS):
-    tmp = db.query(Administrators_Table.username, Administrators_Table.admin_level, Administrators_Table.email).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
-    if tmp:
-        if __sc.validateToken(tmp[0],tmp[1],admin.masterAdminToken) == [True, True] and tmp[1] == "MA" and tmp[2] == admin.email:
-            db.query(Administrators_Table).delete()
-            db.commit()
-            return "Table was deleted"
-        raise Exception("Invalid Administrator")
-    raise Exception("No data was deleted")
+# def delete_all_Members(db:Session, admin: adminSchema.Administrator_Delete_Entry_INPUTS):
+#     tmp = db.query(Administrators_Table.username, Administrators_Table.admin_level, Administrators_Table.email).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
+#     if tmp:
+#         if __sc.validateToken(tmp[0],tmp[1],admin.masterAdminToken) == [True, True] and tmp[1] == "MA" and tmp[2] == admin.email:
+#             db.query(Administrators_Table).delete()
+#             db.commit()
+#             return "Table was deleted"
+#         raise Exception("Invalid Administrator")
+#     raise Exception("No data was deleted")
 
 
 
@@ -212,25 +220,109 @@ def updateAdmin(db: Session, admin: adminSchema.Administrator_ChangePasswdEmail_
         else:raise HTTPException(status_code=401, detail="Invalid Administrator")
     raise Exception("Something went wrong") #goes directly to internal server error exception
 
-def updateCompetitionsMembers(db: Session, user=adminSchema.Member_upate_table):
+def updateCompetitionsMembers(db: Session, user=adminSchema.Competitions_upate_table):
     if not ValidateExist(db=db,table="UpdateCompetitionsSignUp", user=user):
         admin_user = db.query(Administrators_Table.username, Administrators_Table.admin_level).filter(Administrators_Table.username == __sc.decodeToken(user.masterAdminToken)['username']).first()
         if admin_user and __sc.validateToken(admin_user[0], admin_user[1], user.masterAdminToken) == [True, True] and admin_user[1] == "MA":
             user_row = db.query(Competitions_Table).filter(Competitions_Table.email == user.email).first()
             if user_row:
                 user_chapter_row = db.query(Chapter_Members_Table).filter(Chapter_Members_Table.email == user.email).first()
-                if not (user.newEmail or user.newPhone or user.newPhone):
+                if not (user.newEmail or user.newPhone or user.newName):
                     raise HTTPException(status_code=204, detail="No data was changed")
                 
                 if user.newEmail is not None:
                     if user.newEmail != user_row.email:
                         user_row.email = user.newEmail
-                    else: raise HTTPException(status_code=409, detail="This user is already using this email")
-
-                if user_row.email != user_chapter_row.email:
-                    user_chapter_row.email = user_row.email
+                        user_chapter_row.email = user_row.email
+                    else: 
+                        raise HTTPException(status_code=409, detail="This user is already using this email")
                 
-
+                if user.newPhone is not None:
+                    if user.newPhone != user_row.phone:
+                        user_row.phone = user.newPhone
+                        user_chapter_row.phone = user_row.phone
+                    else:
+                        raise HTTPException(status_code=409, detail="The user is already using this phone number")
+                
+                if user.newName is not None:
+                    if user.newName != user_row.name:
+                        user_row.name = user.newName
+                        user_chapter_row.name = user_row.name
+                    else:
+                        raise HTTPException(status_code=409, detail="The user is already using this name")
+                
+                if user.newAscememberhip is not None:
+                    if user.newAscememberhip != user_row.ascemembership:
+                        user_row.ascemembership = user.newAscememberhip
+                    else:
+                        raise HTTPException(status_code=409, detail="The user is already registered to the ASCE using this number")
+                
+                if user.newCompetition_name is not None:
+                    if user.newCompetition_name != user_row.competition_name:
+                        user_row.competition_name = user.newCompetition_name
+                    else:
+                        raise HTTPException(status_code=409, detail="The user is already registered using these competitions")
+                
+                if user.newCourses is not None:
+                    if user.newCourses != user_row.courses:
+                        user_row.courses = user.newCourses
+                    else:
+                        raise HTTPException(status_code=409, detail="The user is already registered using these courses")
+                
+                if user.newDaily_availability is not None:
+                    if user.newDaily_availability != user_row.daily_avail:
+                        user_row.daily_vail = user.newDaily_availability
+                    else:
+                        raise HTTPException(status_code=409, detail="The user is already available during the same days")
+                
+                if user.newExperiences is not None:
+                    if user.newExperiences != user_row.experiences:
+                        user_row.experiences = user.newExperiences
+                    else:
+                        raise HTTPException(status_code=409, detail="The user is already available during the same days")
+                
+                if user.newAscemember is not None:
+                    if user.newAscemember != user_row.ascemember:
+                        user_row.ascemember = user.newAscemember
+                    else:
+                        raise HTTPException(status=409, detail="The user is already of the same ASCE Member Type")
+                
+                if user.newTravel_availability is not None:
+                    if user.newTravel_availability != user_row.travel_avail:
+                        user_row.travel_avail = user.newTravel_availability
+                    else:
+                        raise HTTPException(status=409, detail="The user alrady has the same travel availability type")
+                
+                if user.newTravel_june is not None:
+                    if user.newTravel_june != user_row.travel_june:
+                        user_row.travel_june = user.newTravel_june
+                    else:
+                        raise HTTPException(status=409, detail="The user alrady has the same travel availability type for June")
+                
+                if user.newOlder_than_twentyfive is not None:
+                    if user.newOlder_than_twentyfive != user_row.age_gt_twtfive:
+                        user_row.age_gt_twtfive = user.newOlder_than_twentyfive
+                    else:
+                        raise HTTPException(status=409, detail="The user alrady has the same state for 'Age is greater than 25'")
+                    
+                if user.newHeavy_driver is not None:
+                    if user.newHeavy_driver != user_row.hv_vehicle:
+                        user_row.hv_vehicle = user.newHeavy_driver
+                    else:
+                        raise HTTPException(status=409, detail="The user's availability to drive heavy vehicle is the same")
+                
+                if user.newOfficial_driver is not None:
+                    if user.newOfficial_driver != user_row.offdriver_avail:
+                        user_row.offdriver_avail = user.newOfficial_driver
+                    else:
+                        raise HTTPException(status=409, detail="The user's availabilty to be the organization official driver is the same")
+                
+                if user.newCompetitions_form is not None:
+                    if user.newCompetitions_form != user_row.competitions_form:
+                        user_row.competitions_form = user.newCompetitions_form
+                    else:
+                        raise HTTPException(status=409, detail="The user's availabilty to be the organization official driver is the same")
+                
                 db.commit()
                 db.refresh(user_row)
                 db.refresh(user_chapter_row)
@@ -310,3 +402,7 @@ def updateMembers(db: Session, user=adminSchema.Member_upate_table):
         else:raise HTTPException(status_code=401, detail="Invalid Administrator")
     raise Exception("Something went wrong") #goes directly to internal server error exception
     
+def isTokenValid(db: Session, admin=adminSchema.Administrator_MasterAdminToken):
+    tokenDict = __sc.decodeToken(admin.masterAdminToken)
+    validationState = __sc.validateToken(tokenDict["username"], tokenDict["level"], admin.masterAdminToken)
+    return validationState

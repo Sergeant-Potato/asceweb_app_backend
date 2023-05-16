@@ -40,12 +40,12 @@ def loginAdmin(userName:str, passwd: str, token: str = None, db: Session = Depen
     """Endpoint used to validate and authenticate administrator user by comparing the username and password to the ones in the database"""
     try:
         data = ta.loginAdmin(db,admin = Administrators_Schemas.Administrator_LoginAccount_INPUTS(userName=userName,passwd=passwd,token=token))
-        return {"status_code":data[0], 'body':data[1]}
+        return {"status_code":data[0], 'body':data[1] + " uName:{}".format(data[2])}     # This line should output the code, plus token, plus username
     except (ValidationError, Exception,DecodeError,InvalidSignatureError) as e:
         if type(e) == ValidationError: return {'status_code':404 ,'body':json.loads(e.json())[0]['msg']}
         elif type(e) == Exception: return {"status_code":404, 'body':str(e)}
         elif type(e) == DecodeError or type(e) == InvalidSignatureError: return {"status_code":404, 'body':str(e)}
-        else: return {"status_code":500, 'body':"Internal Server Error"}
+        else: return {"status_code":500, 'body':"Internal Server Error: {a}".format(a=str(e))}
 
 @app.post("/ascepupr/dashboard/user/create/admin/createadmin/",status_code=HTTP_201_CREATED, response_model=Administrators_Schemas.Output_return)
 def createAdmin(userName:str, passwd:str, name:str, email:str, phone: str, adminLevel: str, token: str, db: Session = Depends(get_db)):
@@ -63,9 +63,9 @@ def createAdmin(userName:str, passwd:str, name:str, email:str, phone: str, admin
         else: return {"status_code":500, 'body':"Internal Server Error"}
 
 @app.post("/ascepupr/competitions/form/signuptocompetition/", status_code=HTTP_201_CREATED, response_model=Administrators_Schemas.Output_return)
-def competitionSignUp(name: str, email: str, asce_member:str ,ascemembership_number: str, competition_name: str, courses:str, experiences: str,daily_availability: str, travel_availability: str, travel_june:str,older_than_twentyfive:str,heavy_driver:str, official_driver:str, db: Session = Depends(get_db)):
+def competitionSignUp(name: str, email: str, phone: str, asce_member:str ,ascemembership_number: str, competition_name: str, courses:str, experiences: str,daily_availability: str, travel_availability: str, travel_june:str,older_than_twentyfive:str,heavy_driver:str, official_driver:str, db: Session = Depends(get_db)):
     try:
-        data = Competitions_Test.put_Competition_Data(db=db,user=Competitions_Schema.set_Competitions_Data(name=name, email=email,asce_member=asce_member, ascemembership=ascemembership_number,competition_name=competition_name,courses=courses,experiences=experiences,daily_availability=daily_availability, travel_availability=travel_availability, travel_june=travel_june,older_than_twentyfive=older_than_twentyfive,heavy_driver=heavy_driver,official_driver=official_driver))
+        data = Competitions_Test.put_Competition_Data(db=db,user=Competitions_Schema.set_Competitions_Data(name=name, email=email,phone=phone,asce_member=asce_member, ascemembership=ascemembership_number,competition_name=competition_name,courses=courses,experiences=experiences,daily_availability=daily_availability, travel_availability=travel_availability, travel_june=travel_june,older_than_twentyfive=older_than_twentyfive,heavy_driver=heavy_driver,official_driver=official_driver))
         return {"status_code":HTTP_201_CREATED, 'body':data}
     except (ValidationError, ValueError, Exception,DecodeError,InvalidSignatureError, HTTPException) as e:
         if type(e) == ValidationError: return {'status_code':409 ,'body':json.loads(e.json())[0]['msg']}
@@ -114,6 +114,14 @@ def getCompetitionsMembers(masterAdminToken: str, db: Session = Depends(get_db))
         if type(e) == DecodeError or type(e) == InvalidSignatureError: return {"status_code":401, 'body':str(e)}
         return {"status_code":500, 'body':"Invalid Server Error"}
 
+# Possibly Test
+@app.get("/ascewepupr/isTokenValid/", status_code=HTTP_200_OK)
+def isTokenValid(masterAdminToken:str, db:Session = Depends(get_db)):
+    try:
+        return {"status_code": 200, "body":  ta.isTokenValid(db, admin=Administrators_Schemas.Administrator_MasterAdminToken(masterAdminToken=masterAdminToken)) == [True, True]}
+    except:
+        return {"status_code": 500, "body": "Internal Server Error"}
+
 @app.put("/ascepupr/dashboard/admin/table/update/admin/updatefromadmin/", response_model=Administrators_Schemas.Output_return)
 def updateAdmins(userName: str, masterAdminToken: str, newPasswd: str = None, newEmail: str = None,newPhone: str = None, newLevel: str = None,db: Session = Depends(get_db)):
     try:
@@ -137,9 +145,9 @@ def updateMembers(token: str,email: str, newEmail: str = None, newPhone:str = No
         else: return {"status_code":500, 'body':str(e)}
 
 @app.put("/ascepupr/dashboard/admin/table/update/competitionsmember/updatefromcompetitionsmember", response_model=Administrators_Schemas.Output_return)
-def updateCompetitionsMembers(token: str, email: str, newEmail: str = None, newPhone: str = None, newAscemember: str = None, newAscemembership: str = None,newCompetition_name:str = None, newCourses: str = None, newDaily_Avail: str = None, newTravel: str = None, newTravel_june: str = None, newOlder: str=None, newHeavy: str = None, newOffdriver: str = None, newCompetitions_form: str = None, newExperiences: str =None ,db: Session = Depends(get_db)):
+def updateCompetitionsMembers(token: str, email: str, newName: str = None, newEmail: str = None, newPhone: str = None, newAscemember: str = None, newAscemembership: str = None,newCompetition_name:str = None, newCourses: str = None, newDaily_Avail: str = None, newTravel: str = None, newTravel_june: str = None, newOlder: str=None, newHeavy: str = None, newOffdriver: str = None, newCompetitions_form: str = None, newExperiences: str =None ,db: Session = Depends(get_db)):
     try:
-        data = ta.updateCompetitionsMembers(db=db,user=Administrators_Schemas.Competitions_upate_table(masterAdminToken=token, email=email, newEmail=newEmail, newPhone=newPhone, newAscemember=newAscemember, newAscemembership=newAscemembership, newCompetition_name=newCompetition_name, newCourses=newCourses, newDaily_availability=newDaily_Avail, newTravel_availability=newTravel, newOlder_than_twentyfive=newOlder, newHeavy_driver=newHeavy, newOfficial_driver=newOffdriver, newTravel_june=newTravel_june, newCompetitions_form=newCompetitions_form,newExperiences=newExperiences))
+        data = ta.updateCompetitionsMembers(db=db,user=Administrators_Schemas.Competitions_upate_table(masterAdminToken=token, newName=newName, email=email, newEmail=newEmail, newPhone=newPhone, newAscemember=newAscemember, newAscemembership=newAscemembership, newCompetition_name=newCompetition_name, newCourses=newCourses, newDaily_availability=newDaily_Avail, newTravel_availability=newTravel, newOlder_than_twentyfive=newOlder, newHeavy_driver=newHeavy, newOfficial_driver=newOffdriver, newTravel_june=newTravel_june, newCompetitions_form=newCompetitions_form,newExperiences=newExperiences))
         return {"status_code":HTTP_201_CREATED, 'body':"User updated"}
     except (ValidationError, ValueError, Exception,DecodeError,InvalidSignatureError, HTTPException) as e:
         if type(e) == ValidationError: return {'status_code':422 ,'body':json.loads(e.json())[0]['msg']}
@@ -164,8 +172,8 @@ def deleteAdmin(masterAdminToken: str, email: str, db:Session = Depends(get_db))
 @app.delete("/ascepupr/dashboard/admin/table/delete/members/deletemembers/", response_model=Administrators_Schemas.Output_return)
 def deleteMembers(masterAdminToken: str, email: str, db:Session = Depends(get_db)):
     try:
-        a = ta.delete_all_Member(db=db, admin = Administrators_Schemas.Administrator_Delete_Entry_INPUTS(masterAdminToken=masterAdminToken, email=email))
-        if a == True:
+        a = ta.delete_all_Members(db=db, admin = Administrators_Schemas.Administrator_Delete_Entry_INPUTS(masterAdminToken=masterAdminToken, email=email))
+        if a == "Table was deleted":
             return {"status_code":200, 'body':"Deletion was a success."}
         return {"status_code":401, 'body': 'Deletion was not successful. Check if token and email were correct.'}
     except (ValidationError, ValueError, HTTPException, Exception) as e:
