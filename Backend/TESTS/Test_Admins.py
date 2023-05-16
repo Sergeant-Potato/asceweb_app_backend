@@ -244,13 +244,6 @@ def updateCompetitionsMembers(db: Session, user=adminSchema.Competitions_upate_t
                     else:
                         raise HTTPException(status_code=409, detail="The user is already using this phone number")
                 
-                if user.newName is not None:
-                    if user.newName != user_row.name:
-                        user_row.name = user.newName
-                        user_chapter_row.name = user_row.name
-                    else:
-                        raise HTTPException(status_code=409, detail="The user is already using this name")
-                
                 if user.newAscememberhip is not None:
                     if user.newAscememberhip != user_row.ascemembership:
                         user_row.ascemembership = user.newAscememberhip
@@ -282,46 +275,46 @@ def updateCompetitionsMembers(db: Session, user=adminSchema.Competitions_upate_t
                         raise HTTPException(status_code=409, detail="The user is already available during the same days")
                 
                 if user.newAscemember is not None:
-                    if user.newAscemember != user_row.ascemember:
-                        user_row.ascemember = user.newAscemember
+                    if user.newAscemember != user_row.asce_member:
+                        user_row.asce_member = user.newAscemember
                     else:
-                        raise HTTPException(status=409, detail="The user is already of the same ASCE Member Type")
+                        raise HTTPException(status_code=409, detail="The user is already of the same ASCE Member Type")
                 
                 if user.newTravel_availability is not None:
                     if user.newTravel_availability != user_row.travel_avail:
                         user_row.travel_avail = user.newTravel_availability
                     else:
-                        raise HTTPException(status=409, detail="The user alrady has the same travel availability type")
+                        raise HTTPException(status_code=409, detail="The user alrady has the same travel availability type")
                 
                 if user.newTravel_june is not None:
                     if user.newTravel_june != user_row.travel_june:
                         user_row.travel_june = user.newTravel_june
                     else:
-                        raise HTTPException(status=409, detail="The user alrady has the same travel availability type for June")
+                        raise HTTPException(status_code=409, detail="The user alrady has the same travel availability type for June")
                 
                 if user.newOlder_than_twentyfive is not None:
                     if user.newOlder_than_twentyfive != user_row.age_gt_twtfive:
                         user_row.age_gt_twtfive = user.newOlder_than_twentyfive
                     else:
-                        raise HTTPException(status=409, detail="The user alrady has the same state for 'Age is greater than 25'")
+                        raise HTTPException(status_code=409, detail="The user alrady has the same state for 'Age is greater than 25'")
                     
                 if user.newHeavy_driver is not None:
                     if user.newHeavy_driver != user_row.hv_vehicle:
                         user_row.hv_vehicle = user.newHeavy_driver
                     else:
-                        raise HTTPException(status=409, detail="The user's availability to drive heavy vehicle is the same")
+                        raise HTTPException(status_code=409, detail="The user's availability to drive heavy vehicle is the same")
                 
                 if user.newOfficial_driver is not None:
                     if user.newOfficial_driver != user_row.offdriver_avail:
                         user_row.offdriver_avail = user.newOfficial_driver
                     else:
-                        raise HTTPException(status=409, detail="The user's availabilty to be the organization official driver is the same")
+                        raise HTTPException(status_code=409, detail="The user's availabilty to be the organization official driver is the same")
                 
                 if user.newCompetitions_form is not None:
                     if user.newCompetitions_form != user_row.competitions_form:
                         user_row.competitions_form = user.newCompetitions_form
                     else:
-                        raise HTTPException(status=409, detail="The user's availabilty to be the organization official driver is the same")
+                        raise HTTPException(status_code=409, detail="The user's availabilty to be the organization official driver is the same")
                 
                 db.commit()
                 db.refresh(user_row)

@@ -40,7 +40,7 @@ def loginAdmin(userName:str, passwd: str, token: str = None, db: Session = Depen
     """Endpoint used to validate and authenticate administrator user by comparing the username and password to the ones in the database"""
     try:
         data = ta.loginAdmin(db,admin = Administrators_Schemas.Administrator_LoginAccount_INPUTS(userName=userName,passwd=passwd,token=token))
-        return {"status_code":data[0], 'body':data[1] + " uName:{}".format(data[2])}     # This line should output the code, plus token, plus username
+        return {"status_code":data[0], 'body':data[1]}
     except (ValidationError, Exception,DecodeError,InvalidSignatureError) as e:
         if type(e) == ValidationError: return {'status_code':404 ,'body':json.loads(e.json())[0]['msg']}
         elif type(e) == Exception: return {"status_code":404, 'body':str(e)}
@@ -114,11 +114,12 @@ def getCompetitionsMembers(masterAdminToken: str, db: Session = Depends(get_db))
         if type(e) == DecodeError or type(e) == InvalidSignatureError: return {"status_code":401, 'body':str(e)}
         return {"status_code":500, 'body':"Invalid Server Error"}
 
-# Possibly Test
 @app.get("/ascewepupr/isTokenValid/", status_code=HTTP_200_OK)
 def isTokenValid(masterAdminToken:str, db:Session = Depends(get_db)):
     try:
-        return {"status_code": 200, "body":  ta.isTokenValid(db, admin=Administrators_Schemas.Administrator_MasterAdminToken(masterAdminToken=masterAdminToken)) == [True, True]}
+        print(masterAdminToken)
+        data = ta.isTokenValid(db, admin=Administrators_Schemas.Administrator_MasterAdminToken(masterAdminToken=masterAdminToken))
+        return {"status_code": 200, "body": data}
     except:
         return {"status_code": 500, "body": "Internal Server Error"}
 
@@ -145,9 +146,9 @@ def updateMembers(token: str,email: str, newEmail: str = None, newPhone:str = No
         else: return {"status_code":500, 'body':str(e)}
 
 @app.put("/ascepupr/dashboard/admin/table/update/competitionsmember/updatefromcompetitionsmember", response_model=Administrators_Schemas.Output_return)
-def updateCompetitionsMembers(token: str, email: str, newName: str = None, newEmail: str = None, newPhone: str = None, newAscemember: str = None, newAscemembership: str = None,newCompetition_name:str = None, newCourses: str = None, newDaily_Avail: str = None, newTravel: str = None, newTravel_june: str = None, newOlder: str=None, newHeavy: str = None, newOffdriver: str = None, newCompetitions_form: str = None, newExperiences: str =None ,db: Session = Depends(get_db)):
+def updateCompetitionsMembers(token: str, email: str, newEmail: str = None, newPhone: str = None, newAscemember: str = None, newAscemembership: str = None,newCompetition_name:str = None, newCourses: str = None, newDaily_Avail: str = None, newTravel: str = None, newTravel_june: str = None, newOlder: str=None, newHeavy: str = None, newOffdriver: str = None, newCompetitions_form: str = None, newExperiences: str =None ,db: Session = Depends(get_db)):
     try:
-        data = ta.updateCompetitionsMembers(db=db,user=Administrators_Schemas.Competitions_upate_table(masterAdminToken=token, newName=newName, email=email, newEmail=newEmail, newPhone=newPhone, newAscemember=newAscemember, newAscemembership=newAscemembership, newCompetition_name=newCompetition_name, newCourses=newCourses, newDaily_availability=newDaily_Avail, newTravel_availability=newTravel, newOlder_than_twentyfive=newOlder, newHeavy_driver=newHeavy, newOfficial_driver=newOffdriver, newTravel_june=newTravel_june, newCompetitions_form=newCompetitions_form,newExperiences=newExperiences))
+        data = ta.updateCompetitionsMembers(db=db,user=Administrators_Schemas.Competitions_upate_table(masterAdminToken=token, email=email, newEmail=newEmail, newPhone=newPhone, newAscemember=newAscemember, newAscemembership=newAscemembership, newCompetition_name=newCompetition_name, newCourses=newCourses, newDaily_availability=newDaily_Avail, newTravel_availability=newTravel, newOlder_than_twentyfive=newOlder, newHeavy_driver=newHeavy, newOfficial_driver=newOffdriver, newTravel_june=newTravel_june, newCompetitions_form=newCompetitions_form,newExperiences=newExperiences))
         return {"status_code":HTTP_201_CREATED, 'body':"User updated"}
     except (ValidationError, ValueError, Exception,DecodeError,InvalidSignatureError, HTTPException) as e:
         if type(e) == ValidationError: return {'status_code':422 ,'body':json.loads(e.json())[0]['msg']}
