@@ -8,10 +8,10 @@ class Competitions_Table(Base):
     __tablename__ = 'competitions'
 
     #Creating the relation between the columns of each table
-    idchapter_members = Column(INTEGER(unsigned=True),  ForeignKey('chapter_members.idchapter_members', onupdate="CASCADE", ondelete="CASCADE"),primary_key=True)
-    name = Column(String(55), ForeignKey('chapter_members.name', onupdate="CASCADE", ondelete="CASCADE"))
-    email = Column(String(100), ForeignKey('chapter_members.email', onupdate="CASCADE", ondelete="CASCADE"))
-    phone = Column(String(15), ForeignKey('chapter_members.phone', onupdate="CASCADE", ondelete="CASCADE"))
+    idchapter_members = Column(INTEGER(unsigned=True),  ForeignKey('chapter_members.idchapter_members'),primary_key=True)
+    name = Column(String(55), ForeignKey('chapter_members.name'))
+    email = Column(String(100), ForeignKey('chapter_members.email'))
+    phone = Column(String(15), ForeignKey('chapter_members.phone'))
 
     ascemembership = Column(String, unique=True, nullable=False)
     competition_name = Column(String(100), nullable=False)
