@@ -7,6 +7,7 @@ import Backend.SCHEMAS.Administrators_Schemas as adminSchema
 from Backend.API.Security import Secuirity as sc
 from fastapi import HTTPException
 from typing import Union
+from datetime import datetime as dt
 __sc = sc()
 '''
     If working properly, functions to be moved elsewhere in the future.
@@ -314,7 +315,7 @@ def updateMembers(db: Session, user=adminSchema.Member_upate_table):
         if admin_user and __sc.validateToken(admin_user[0], admin_user[1], user.masterAdminToken) == [True, True] and admin_user[1] == "MA":
             user_row = db.query(Chapter_Members_Table).filter(Chapter_Members_Table.email == user.email).first()
             if user_row:
-                if not (user.newEmail or user.newPhone or user.newTshirt_size or user.newAge or user.newBachelor or user.newDepartment or user.newAca_years or user.newMembership):
+                if not (user.newEmail or user.newPhone or user.newTshirt_size or user.newAge or user.newBachelor or user.newDepartment or user.newAca_years or user.newMembershipPaid):
                     raise HTTPException(status_code=204, detail="No data was changed")
                 
                 if user.newEmail is not None:
@@ -352,9 +353,13 @@ def updateMembers(db: Session, user=adminSchema.Member_upate_table):
                         user_row.aca_years = user.newAca_years
                     else: raise HTTPException(status_code=409, detail="This user is already using this age")
 
-                if user.newMembership is not None:
-                    if user.newMembership != user_row.membership_paid:
-                        user_row.membership_paid = user.newMembership
+                if user.newMembershipPaid is not None:
+                    if user.newMembershipPaid != user_row.membership_paid:
+                        user_row.membership_paid = user.newMembershipPaid
+                        if user.newMembershipPaid == "Yes":
+                            user_row.membership_until = str(dt.now().date())
+                        else:
+                            user_row.membership_until = "Expired"
                     else: raise HTTPException(status_code=409, detail="This user is already using this membership value")
                 
                 db.commit()

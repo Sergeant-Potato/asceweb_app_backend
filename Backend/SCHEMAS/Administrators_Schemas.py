@@ -221,7 +221,7 @@ class Member_upate_table(Schema):
     newBachelor: str = None
     newDepartment: str = None
     newAca_years: int = None
-    newMembership: str = None
+    newMembershipPaid: str = None
 
     masterAdminToken: str
 
@@ -313,7 +313,7 @@ class Member_upate_table(Schema):
             return value
         return value
    
-    @validator('newMembership',allow_reuse=True)
+    @validator('newMembershipPaid',allow_reuse=True)
     def validate_membership(cls,value:str):
         if value:
             if " " in value:

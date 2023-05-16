@@ -141,7 +141,7 @@ def updateAdmins(userName: str, masterAdminToken: str, newPasswd: str = None, ne
 @app.put("/ascepupr/dashboard/admin/table/update/members/updatefrommember", response_model=Administrators_Schemas.Output_return)
 def updateMembers(token: str,email: str, newEmail: str = None, newPhone:str = None, newTshirt_size: str = None, newAge: int = None, newBachelor:str = None, newDepartment: str = None, newAcademic_Years: int = None, newMembership: str = None, db: Session = Depends(get_db)):
     try:
-        data = ta.updateMembers(db=db,user=Administrators_Schemas.Member_upate_table(masterAdminToken=token, email=email, newEmail=newEmail, newPhone=newPhone, newTshirt_size=newTshirt_size, newAge=newAge, newBachelor=newBachelor, newDepartment=newDepartment, newAca_years=newAcademic_Years, newMembership=newMembership))
+        data = ta.updateMembers(db=db,user=Administrators_Schemas.Member_upate_table(masterAdminToken=token, email=email, newEmail=newEmail, newPhone=newPhone, newTshirt_size=newTshirt_size, newAge=newAge, newBachelor=newBachelor, newDepartment=newDepartment, newAca_years=newAcademic_Years, newMembershipPaid=newMembership))
         return {"status_code":HTTP_201_CREATED, 'body':data}
     except (ValidationError, ValueError, Exception,DecodeError,InvalidSignatureError, HTTPException) as e:
         if type(e) == ValidationError: return {'status_code':422 ,'body':json.loads(e.json())[0]['msg']}
