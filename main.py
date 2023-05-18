@@ -1,5 +1,7 @@
 import traceback
 from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import exc
 from Backend.TESTS import SignUp_Test,Competitions_Test, Test_Admins as ta
@@ -12,7 +14,25 @@ from starlette.status import HTTP_204_NO_CONTENT, HTTP_404_NOT_FOUND, HTTP_200_O
 
 Base.metadata.create_all(bind = engine)
 
-app = FastAPI()
+"""To view documentation of the endpoints change the below variable to be 
+    app = FastAPI()
+"""
+app = FastAPI(docs_url=None, redoc_url=None)
+
+
+"""Orins, the variable containing all the IP allowed to use the backend application in this case the only IP allowed is the ASCEPUPR Domain name"""
+origins = [
+    "https://ajeto.azurewebsites.net"
+]
+
+"""Add the allowed origins IP's to the fastapi application variable """
+app.add_middleware(
+    # CORSMiddleware(origins,allow_methods=["*"], allow_headers=["*"])
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 #dependency
 def get_db():
@@ -21,6 +41,11 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+@app.post("/")
+def m():
+    return "Hello World"
 
 @app.post("/ascepupr/login/user/form/user/logintodashboard/", response_model=Administrators_Schemas.Administrator_Validate_User)
 def loginAdmin(userName:str, passwd: SecretStr, db: Session = Depends(get_db)):
