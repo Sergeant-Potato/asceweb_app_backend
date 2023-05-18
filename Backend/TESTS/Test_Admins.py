@@ -15,7 +15,7 @@ __sc = sc()
 '''
 
 
-def ValidateExist(db:Session,table: str, user: Union[adminSchema.Administrator_LoginAccount_DB, adminSchema.Member_upate_table,adminSchema.Administrator_ChangePasswdEmail_DB, adminSchema.Competitions_upate_table]):
+def ValidateExist(db:Session,table: str, user: Union[adminSchema.Administrator_LoginAccount_DB, adminSchema.Member_update,adminSchema.Administrator_ChangePasswdEmail_DB, adminSchema.Competitions_update]):
     """Returns false if user does not exist, else raise exception if username, phone or email exist"""
     if table == "CreateAdmin":
         db_profile = db.query(Administrators_Table).filter(or_(Administrators_Table.email == user.email,Administrators_Table.username == user.userName,Administrators_Table.phone == user.phone)).first()
@@ -133,17 +133,15 @@ def get_Competitions_Table(db: Session, admin: adminSchema.Administrator_MasterA
 def delete_members(db:Session, admin: adminSchema.Administrator_Delete_Entry_INPUTS):
     admin_user = db.query(Administrators_Table.username, Administrators_Table.admin_level, Administrators_Table.email).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
     if admin_user:
-        if __sc.validateToken(admin_user[0],admin_user[1],admin.masterAdminToken) == [True, True] and admin_user[1] == "MA":
+        if __sc.validateToken(admin_user[0],admin_user[1],admin.masterAdminToken) == [True, True] and admin_user[1] == "MA" or admin_user[1] == "GA":
             user_member = db.query(Chapter_Members_Table).filter(Chapter_Members_Table.email == admin.email).first()
             if user_member:
                 comp_member = db.query(Competitions_Table).filter(Competitions_Table.email == admin.email).delete()
                 if comp_member:
                     user_member.competitions_form = "No"
-                else:
-                    db.delete(user_member)
-                    db.commit()
-                    return "User was deleted"
-                raise HTTPException(status_code=204, detail="No data deleted")
+                db.delete(user_member)
+                db.commit()
+                return "User was deleted"
             raise HTTPException(status_code=404, detail="Member not found")
         raise HTTPException(status_code=401, detail="Invalid administrator")
     raise HTTPException(status_code=404, detail="Administrator not found")
@@ -151,7 +149,7 @@ def delete_members(db:Session, admin: adminSchema.Administrator_Delete_Entry_INP
 def delete_competitionsMember(db:Session, admin: adminSchema.Administrator_Delete_Entry_INPUTS):
     admin_user = db.query(Administrators_Table.username, Administrators_Table.admin_level, Administrators_Table.email).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
     if admin_user:
-        if __sc.validateToken(admin_user[0],admin_user[1],admin.masterAdminToken) == [True, True] and admin_user[1] == "MA" and admin_user[2] != admin.email:
+        if __sc.validateToken(admin_user[0],admin_user[1],admin.masterAdminToken) == [True, True] and admin_user[1] == "MA" or admin_user[1] == "GA":
             user_member = db.query(Chapter_Members_Table).filter(Chapter_Members_Table.email == admin.email).first()
             if user_member:
                 user_member.competitions_form = 'No'
@@ -309,7 +307,7 @@ def updateCompetitionsMembers(db: Session, user:adminSchema.Competitions_update)
                 if user.newCompetitions_form is not None:
                     if user.newCompetitions_form != user_row.competitions_form:
                         user_row.competitions_form = user.newCompetitions_form
-                        user_chapter_row = user.newCompetitions_form
+                        user_chapter_row.competitions_form = user.newCompetitions_form
                         """cambiar row de mmebers a no"""
                     else:
                         raise HTTPException(status_code=409, detail="The user's availabilty to be the organization official driver is the same")
