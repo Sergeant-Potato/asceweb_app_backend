@@ -1,16 +1,17 @@
 from sqlalchemy import create_engine, MetaData 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
+import os, json
 
+with open("Backend/CONFIG/config.json") as f:
+    config = json.load(f)
 
-
-username = os.getenv('db_username')#config["database_username"]
-password = os.getenv("db_password")#config["database_password"]
-hostname = os.getenv("db_host")#config["database_hostname"]
-port = os.getenv("db_port")#config["database_port"]
-dbname = os.getenv("db_name")#config["database_name"]
-pem_file = os.getenv("db_pem")#config["database_pem"]
+username = config["database_username"]
+password = config["database_password"]
+hostname = config["database_hostname"]
+port = config["database_port"]
+dbname = config["database_name"]
+pem_file = config["database_pem"]
 # pemm_file = os.getenv("dbpem")
 ssl_arg = {"ssl_ca":pem_file}
 

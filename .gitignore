@@ -6,3 +6,4 @@ DigiCertGlobalRootCA.crt.pem
 Chapter_Members_Schemas.py
 jwt.py
 .python-version
+connection.py
