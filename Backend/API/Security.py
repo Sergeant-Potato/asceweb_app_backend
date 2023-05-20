@@ -2,7 +2,7 @@ from cryptography.hazmat.primitives import hashes
 from datetime import datetime, timedelta
 import os, jwt, pytz
 
-class Secuirity:
+class Security:
      
     def __init__(self, rt: int = 1):
         try:
@@ -72,15 +72,16 @@ class Secuirity:
             
 
 if __name__ == "__main__":
-    obj = Secuirity(2)
+    obj = Security(2)
     
     data = "Papa Franku is the Messiah."
     print("The data is ==> "+ data)
-    hashedData = obj.encrypt(data)
+    hashedData = obj.encryptHash(data)
     print("The hashed data is ==> " + hashedData)
-    print("If verified, they both should be true ==> "+ str(obj.verify(data, hashedData)))
+    print(len(hashedData))
+    print("If verified, they both should be true ==> "+ str(obj.validateHash(data, hashedData)))
 
     data = "Papa Franku is not the Messiah."
     print("This is the new data ==> " + data)
-    print("Let's show this heretic that this data is false ==> " + str(obj.verify(data,hashedData)))
+    print("Let's show this heretic that this data is false ==> " + str(obj.validateHash(data,hashedData)))
     

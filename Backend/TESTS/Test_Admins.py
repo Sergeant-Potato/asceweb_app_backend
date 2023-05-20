@@ -4,7 +4,7 @@ from Backend.DATABASE.Administrators_Table import Administrators_Table
 from Backend.DATABASE.Chapter_Members_Table import Chapter_Members_Table
 from Backend.DATABASE.Competitions_Table import Competitions_Table
 import Backend.SCHEMAS.Administrators_Schemas as adminSchema
-from Backend.API.Security import Secuirity as sc
+from Backend.API.Security import Security as sc
 from fastapi import HTTPException
 from typing import Union
 from datetime import datetime as dt
