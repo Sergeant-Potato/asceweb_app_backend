@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, exc
+from sqlalchemy import or_
 from Backend.DATABASE.Administrators_Table import Administrators_Table
 from Backend.DATABASE.Chapter_Members_Table import Chapter_Members_Table
 from Backend.DATABASE.Competitions_Table import Competitions_Table
@@ -13,7 +13,6 @@ __sc = sc()
 '''
     If working properly, functions to be moved elsewhere in the future.
 '''
-
 
 def ValidateExist(db:Session,table: str, user: Union[adminSchema.Administrator_LoginAccount_DB, adminSchema.Member_update,adminSchema.Administrator_ChangePasswdEmail_DB, adminSchema.Competitions_update]):
     """Returns false if user does not exist, else raise exception if username, phone or email exist"""
@@ -55,8 +54,6 @@ def ValidateExist(db:Session,table: str, user: Union[adminSchema.Administrator_L
         return False
     raise Exception("Table {} does not exist".format(table))
 
-
-
 def createAdmin(db:Session, admin: adminSchema.Administrator_CreateAccount_DB):
     """Function used to create admin users, by first validating that the username, phone and email does not exist"""
     if not ValidateExist(db, table="CreateAdmin", user=admin):
@@ -72,7 +69,6 @@ def createAdmin(db:Session, admin: adminSchema.Administrator_CreateAccount_DB):
         raise HTTPException(status_code=404, detail="No username found")
     raise HTTPException(status_code=409, detail="User already in table")
 
-
 def loginAdmin(db: Session, admin: adminSchema.Administrator_LoginAccount_DB) -> list:
     """Validate username and password as well as token to return either an invalid login or valid login"""
     db_information = db.query(Administrators_Table.username, Administrators_Table.password, Administrators_Table.admin_level).filter(Administrators_Table.username == admin.userName).first()
@@ -82,9 +78,6 @@ def loginAdmin(db: Session, admin: adminSchema.Administrator_LoginAccount_DB) ->
             return data
         raise HTTPException(status_code=401, detail="Invalid username or password")
     raise HTTPException(status_code=404, detail="No username found")
-    
-
-
 
 def getAdmins(db: Session, admin: adminSchema.Administrator_MasterAdminToken):
     """Function that returns the whole table of admins users"""
@@ -106,7 +99,6 @@ def getAdmins(db: Session, admin: adminSchema.Administrator_MasterAdminToken):
         raise HTTPException(status_code=401, detail="Invalid Administrator")
     raise HTTPException(status_code=404, detail="No administrator found")
 
-
 def get_SignUp_Table(db: Session, admin: adminSchema.Administrator_MasterAdminToken):
     admin_user = db.query(Administrators_Table.username,Administrators_Table.admin_level).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()
     if admin_user:
@@ -116,7 +108,7 @@ def get_SignUp_Table(db: Session, admin: adminSchema.Administrator_MasterAdminTo
                 for member in members:
                     if member.membership_until <= str(dt.now()):
                         member.membership_until = 'Expired'
-                        member.membership_pais = 'No'
+                        member.membership_paid = 'No'
                 db.commit()
                 return [adminSchema.get_SignUp_Data(idchapter_members=entry.idchapter_members,name=entry.name,email=entry.email,phone=entry.phone,tshirt_size=entry.tshirt_size,age=entry.age,bachelor=entry.bachelor,department=entry.department,type=entry.type,created_at=entry.created_at,competitions_form=entry.competitions_form,aca_years=entry.aca_years,membership_paid=entry.membership_paid,membership_until=entry.membership_until) for entry in members]
             raise HTTPException(status_code=400, detail="No data was found")
@@ -172,7 +164,6 @@ def delete_members_list(db: Session, admin: adminSchema.Administrator_list_delet
             raise HTTPException(status_code=404, detail="No users found with the provided emails") 
         raise HTTPException(status_code=401, detail="Invalid administrator")
     raise HTTPException(status_code=404, detail="Administrator not found")
-
 
 def delete_competitionsMember(db:Session, admin: adminSchema.Administrator_Delete_Entry_INPUTS):
     admin_user = db.query(Administrators_Table.username, Administrators_Table.admin_level, Administrators_Table.email).filter(Administrators_Table.username == __sc.decodeToken(admin.masterAdminToken)['username']).first()

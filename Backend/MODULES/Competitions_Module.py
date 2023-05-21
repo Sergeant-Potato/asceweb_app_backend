@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from Backend.DATABASE.Competitions_Table import Competitions_Table
 from Backend.SCHEMAS.Competitions_Schema import set_Competitions_Data
 from Backend.DATABASE.Chapter_Members_Table import Chapter_Members_Table
-from sqlalchemy import or_, exists
+from sqlalchemy import or_
 from fastapi import HTTPException
 
 

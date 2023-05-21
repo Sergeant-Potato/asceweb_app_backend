@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 # from pydantic import SecretStr
 
-from Backend.TESTS import Test_Admins as ta
+from Backend.MODULES import Admins_Module as ta
 from Backend.DATABASE.Administrators_Table import Administrators_Table
 from Backend.SCHEMAS import Administrators_Schemas
 from Backend.CONFIG.connection import engine, Base, SessionLocal
