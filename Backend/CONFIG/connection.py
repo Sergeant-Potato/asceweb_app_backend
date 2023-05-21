@@ -2,6 +2,7 @@ from sqlalchemy import create_engine, MetaData
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os, json
+from sqlalchemy.engine import URL
 
 with open("Backend/CONFIG/config.json") as f:
     config = json.load(f)
@@ -17,7 +18,7 @@ ssl_arg = {"ssl_ca":pem_file}
 
 #ALGONADA
 # Creating engine to connect to the database in Azure
-engine = create_engine(f"mysql+pymysql://{username}:{password}@{hostname}:{port}/{dbname}", connect_args=ssl_arg)
+engine = create_engine(URL("mysql+pymysql",username=username,password=password,host=hostname,database=dbname), connect_args=ssl_arg)
 
 # Instance for the datbase session
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
